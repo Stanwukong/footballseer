@@ -1,0 +1,113 @@
+@import "tailwindcss";
+
+/* Design tokens. Light is the base; dark is its own selected set of steps. */
+:root {
+  color-scheme: light;
+  --bg: #f4f4f2;
+  --surface: #fcfcfb;
+  --surface-2: #f0efec;
+  --border: #e2e1dc;
+  --text: #0b0b0b;
+  --text-2: #52514e;
+  --text-3: #7a7974;
+  --accent: #1c5cab;
+  --accent-soft: #cde2fb;
+  --good: #0ca30c;
+  --good-text: #006300;
+  --bad: #d03b3b;
+
+  /* data viz roles */
+  --home: #2a78d6;
+  --draw: #c9c8c2;
+  --away: #eb6834;
+  --series-1: #2a78d6;
+  --seq-0: #f0efec;
+  --seq-1: #cde2fb;
+  --seq-2: #9ec5f4;
+  --seq-3: #6da7ec;
+  --seq-4: #3987e5;
+  --seq-5: #256abf;
+  --seq-6: #184f95;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #121211;
+    --surface: #1a1a19;
+    --surface-2: #232321;
+    --border: #2f2f2c;
+    --text: #f0efec;
+    --text-2: #c3c2b7;
+    --text-3: #8f8e86;
+    --accent: #86b6ef;
+    --accent-soft: #1c3557;
+    --good-text: #4cc94c;
+    --bad: #e66767;
+    --home: #3987e5;
+    --draw: #5b5a55;
+    --away: #d95926;
+    --series-1: #3987e5;
+    --seq-0: #232321;
+    --seq-1: #104281;
+    --seq-2: #184f95;
+    --seq-3: #1c5cab;
+    --seq-4: #256abf;
+    --seq-5: #2a78d6;
+    --seq-6: #5598e7;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #121211;
+  --surface: #1a1a19;
+  --surface-2: #232321;
+  --border: #2f2f2c;
+  --text: #f0efec;
+  --text-2: #c3c2b7;
+  --text-3: #8f8e86;
+  --accent: #86b6ef;
+  --accent-soft: #1c3557;
+  --good-text: #4cc94c;
+  --bad: #e66767;
+  --home: #3987e5;
+  --draw: #5b5a55;
+  --away: #d95926;
+  --series-1: #3987e5;
+  --seq-0: #232321;
+  --seq-1: #104281;
+  --seq-2: #184f95;
+  --seq-3: #1c5cab;
+  --seq-4: #256abf;
+  --seq-5: #2a78d6;
+  --seq-6: #5598e7;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--border);
+  --color-ink: var(--text);
+  --color-ink-2: var(--text-2);
+  --color-ink-3: var(--text-3);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-good: var(--good-text);
+  --color-bad: var(--bad);
+  --color-home: var(--home);
+  --color-draw: var(--draw);
+  --color-away: var(--away);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
