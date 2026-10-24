@@ -11,7 +11,8 @@ import type { Fixture, FixtureSlim, League, LeagueInfo, Meta, Result, Teams, Tra
 // rewrites them under a running server, so they're re-read within seconds.
 const DIR = path.join(process.cwd(), "public", "data");
 
-async function load<T>(name: string, fallback: T): Promise<T> {
+/** A pipeline JSON file under public/data; `name` may include a sport folder ("basketball/fixtures.json"). */
+export async function load<T>(name: string, fallback: T): Promise<T> {
   "use cache";
   if (process.env.NODE_ENV === "development") cacheLife("seconds");
   else cacheLife("max");

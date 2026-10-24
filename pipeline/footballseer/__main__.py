@@ -3,6 +3,7 @@ import logging
 from datetime import date
 
 from . import pipeline
+from .basketball import pipeline as basketball
 
 
 def main() -> None:
@@ -13,6 +14,11 @@ def main() -> None:
     b = sub.add_parser("backtest", help="walk-forward backtest for the track record")
     b.add_argument("--start", default="2025-08-01")
     b.add_argument("--refit-days", type=int, default=7)
+    bb = sub.add_parser("basketball", help="the same jobs for basketball")
+    bb.add_argument("job", choices=["run", "backtest"])
+    bb.add_argument("--date", type=date.fromisoformat, help="pretend today is this date")
+    bb.add_argument("--start", default="2025-05-01", help="backtest start (covers the 2025 WNBA season)")
+    bb.add_argument("--refit-days", type=int, default=7)
     ap.add_argument("-v", "--verbose", action="store_true")
     args = ap.parse_args()
 
@@ -20,8 +26,12 @@ def main() -> None:
                         format="%(asctime)s %(levelname)s %(message)s", datefmt="%H:%M:%S")
     if args.cmd == "run":
         pipeline.run(args.date)
-    else:
+    elif args.cmd == "backtest":
         pipeline.backtest(args.start, refit_days=args.refit_days)
+    elif args.job == "run":
+        basketball.run(args.date)
+    else:
+        basketball.backtest(args.start, args.date, refit_days=args.refit_days)
 
 
 if __name__ == "__main__":

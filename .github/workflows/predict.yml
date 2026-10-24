@@ -48,7 +48,14 @@ jobs:
       - if: inputs.backtest
         run: python -m footballseer backtest
 
+      - if: inputs.backtest
+        run: python -m footballseer basketball backtest
+
       - run: python -m footballseer run
+
+      # Basketball is a bonus on top of football: a failure here must not block the football commit.
+      - run: python -m footballseer basketball run
+        continue-on-error: true
 
       - name: Commit data
         working-directory: .

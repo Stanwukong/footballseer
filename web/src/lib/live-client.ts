@@ -2,94 +2,102 @@
 
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
-import type { LiveDetail, LiveEvent, LiveFeed, LiveState } from "./types";
+import type { LiveDetail as BasketballDetail, LiveFeed as BasketballFeed } from "./basketball/types";
+import type { LiveDetail, LiveFeed, LiveState } from "./types";
 
 /*
- * One poller for the whole app. It runs while any component is subscribed and
- * the tab is visible, refreshing every 30 s; a hidden tab stops polling and
- * refreshes as soon as it's shown again.
+ * One poller per live feed for the whole app. It runs while any component is
+ * subscribed and the tab is visible, refreshing every 30 s; a hidden tab stops
+ * polling and refreshes as soon as it's shown again.
  */
 
 const FEED_MS = 30_000;
 const DETAIL_MS = 20_000;
 
-interface FeedState {
-  feed: LiveFeed | null;
+interface FeedState<F> {
+  feed: F | null;
   error: boolean;
 }
 
-let state: FeedState = { feed: null, error: false };
-const listeners = new Set<() => void>();
-let timer: ReturnType<typeof setTimeout> | null = null;
-let inflight = false;
-
-function emit(next: FeedState) {
-  state = next;
-  listeners.forEach((l) => l());
+interface AnyFeed {
+  events: { fixture: string | null; state: LiveState }[];
 }
 
-async function poll() {
-  if (timer) clearTimeout(timer);
-  timer = null;
-  if (document.hidden || !listeners.size) return;
-  if (!inflight) {
-    inflight = true;
-    try {
-      const res = await fetch("/api/live", { cache: "no-store" });
-      if (!res.ok) throw new Error(String(res.status));
-      emit({ feed: (await res.json()) as LiveFeed, error: false });
-    } catch {
-      emit({ ...state, error: true });
-    } finally {
-      inflight = false;
-    }
-  }
-  if (listeners.size && !document.hidden) timer = setTimeout(poll, FEED_MS);
-}
+function createFeed<F extends AnyFeed>(url: string) {
+  let state: FeedState<F> = { feed: null, error: false };
+  const listeners = new Set<() => void>();
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  let inflight = false;
 
-const onVisibility = () => {
-  if (!document.hidden) poll();
-};
+  const emit = (next: FeedState<F>) => {
+    state = next;
+    listeners.forEach((l) => l());
+  };
 
-function subscribe(cb: () => void) {
-  listeners.add(cb);
-  if (listeners.size === 1) {
-    document.addEventListener("visibilitychange", onVisibility);
-    poll();
-  }
-  return () => {
-    listeners.delete(cb);
-    if (!listeners.size) {
-      document.removeEventListener("visibilitychange", onVisibility);
-      if (timer) clearTimeout(timer);
-      timer = null;
+  async function poll() {
+    if (timer) clearTimeout(timer);
+    timer = null;
+    if (document.hidden || !listeners.size) return;
+    if (!inflight) {
+      inflight = true;
+      try {
+        const res = await fetch(url, { cache: "no-store" });
+        if (!res.ok) throw new Error(String(res.status));
+        emit({ feed: (await res.json()) as F, error: false });
+      } catch {
+        emit({ ...state, error: true });
+      } finally {
+        inflight = false;
+      }
     }
+    if (listeners.size && !document.hidden) timer = setTimeout(poll, FEED_MS);
+  }
+
+  const onVisibility = () => {
+    if (!document.hidden) poll();
+  };
+
+  function subscribe(cb: () => void) {
+    listeners.add(cb);
+    if (listeners.size === 1) {
+      document.addEventListener("visibilitychange", onVisibility);
+      poll();
+    }
+    return () => {
+      listeners.delete(cb);
+      if (!listeners.size) {
+        document.removeEventListener("visibilitychange", onVisibility);
+        if (timer) clearTimeout(timer);
+        timer = null;
+      }
+    };
+  }
+
+  const SERVER: FeedState<F> = { feed: null, error: false };
+
+  return function useFeed(): FeedState<F> & { byFixture: Map<string, F["events"][number]>; liveCount: number } {
+    const s = useSyncExternalStore(subscribe, () => state, () => SERVER);
+    const byFixture = useMemo(() => {
+      const m = new Map<string, F["events"][number]>();
+      for (const e of s.feed?.events ?? []) if (e.fixture) m.set(e.fixture, e);
+      return m;
+    }, [s.feed]);
+    const liveCount = useMemo(() => (s.feed?.events ?? []).filter((e) => e.state === "in").length, [s.feed]);
+    return { ...s, byFixture, liveCount };
   };
 }
 
-const SERVER: FeedState = { feed: null, error: false };
+/** Football: ESPN soccer scoreboards. */
+export const useLiveFeed = createFeed<LiveFeed>("/api/live");
+/** Basketball: ESPN and EuroLeague scoreboards. */
+export const useBasketballFeed = createFeed<BasketballFeed>("/api/basketball/live");
 
-export function useLiveFeed(): FeedState & { byFixture: Map<string, LiveEvent>; liveCount: number } {
-  const s = useSyncExternalStore(subscribe, () => state, () => SERVER);
-  const byFixture = useMemo(() => {
-    const m = new Map<string, LiveEvent>();
-    for (const e of s.feed?.events ?? []) if (e.fixture) m.set(e.fixture, e);
-    return m;
-  }, [s.feed]);
-  const liveCount = useMemo(() => (s.feed?.events ?? []).filter((e) => e.state === "in").length, [s.feed]);
-  return { ...s, byFixture, liveCount };
-}
-
-/**
- * Full detail for one match, refreshed while it's in play. Keyed on the feed's
- * state so it starts at kick-off and takes one last read at full time.
- */
-export function useLiveDetail(espn: string | null, feedState: LiveState | undefined) {
+function useDetail<D extends { event: { state: LiveState } }>(url: string | null, feedState: LiveState | undefined) {
   const active = feedState === "in" || feedState === "post";
-  const [detail, setDetail] = useState<LiveDetail | null>(null);
+  const [detail, setDetail] = useState<D | null>(null);
   const [error, setError] = useState(false);
   useEffect(() => {
-    if (!espn || !active) return;
+    if (!url || !active) return;
     let stop = false;
     let t: ReturnType<typeof setTimeout> | null = null;
     const load = async () => {
@@ -98,9 +106,9 @@ export function useLiveDetail(espn: string | null, feedState: LiveState | undefi
         return;
       }
       try {
-        const res = await fetch(`/api/live/${espn}`, { cache: "no-store" });
+        const res = await fetch(url, { cache: "no-store" });
         if (!res.ok) throw new Error(String(res.status));
-        const d = (await res.json()) as LiveDetail;
+        const d = (await res.json()) as D;
         if (stop) return;
         setDetail(d);
         setError(false);
@@ -115,6 +123,18 @@ export function useLiveDetail(espn: string | null, feedState: LiveState | undefi
       stop = true;
       if (t) clearTimeout(t);
     };
-  }, [espn, active, feedState]);
+  }, [url, active, feedState]);
   return { detail, error };
+}
+
+/**
+ * Full detail for one match, refreshed while it's in play. Keyed on the feed's
+ * state so it starts at kick-off and takes one last read at full time.
+ */
+export function useLiveDetail(espn: string | null, feedState: LiveState | undefined) {
+  return useDetail<LiveDetail>(espn ? `/api/live/${espn}` : null, feedState);
+}
+
+export function useBasketballDetail(live: string | null, feedState: LiveState | undefined) {
+  return useDetail<BasketballDetail>(live ? `/api/basketball/live/${live}` : null, feedState);
 }

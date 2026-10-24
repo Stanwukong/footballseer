@@ -36,7 +36,7 @@ const cache = new Map<string, { at: number; value?: unknown; pending?: Promise<u
  * takes seconds). Only the first call, or one after MAX_STALE, waits.
  * A failed refresh keeps serving the last good value.
  */
-function cached<T>(key: string, ttl: number, load: () => Promise<T>): Promise<T> {
+export function cached<T>(key: string, ttl: number, load: () => Promise<T>): Promise<T> {
   const entry = cache.get(key) ?? { at: 0 };
   cache.set(key, entry);
   const age = Date.now() - entry.at;
@@ -58,7 +58,7 @@ function cached<T>(key: string, ttl: number, load: () => Promise<T>): Promise<T>
   return refresh() as Promise<T>;
 }
 
-async function getJson(url: string): Promise<unknown> {
+export async function getJson(url: string): Promise<unknown> {
   const res = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(8000), headers: { "User-Agent": "footballseer/0.1" } });
   if (!res.ok) throw new Error(`${res.status} ${url}`);
   return res.json();

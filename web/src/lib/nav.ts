@@ -41,3 +41,17 @@ export const NAV: { title: string; items: NavItem[] }[] = [
     ],
   },
 ];
+
+export type Sport = "football" | "basketball";
+
+export const SPORTS: { id: Sport; label: string }[] = [
+  { id: "football", label: "Football" },
+  { id: "basketball", label: "Basketball" },
+];
+
+/** Basketball lives under /basketball with the same page names as football. */
+export const sportOf = (pathname: string): Sport =>
+  pathname === "/basketball" || pathname.startsWith("/basketball/") ? "basketball" : "football";
+
+export const sportHref = (sport: Sport, href: string) =>
+  sport === "football" ? href : href === "/" ? "/basketball" : `/basketball${href}`;

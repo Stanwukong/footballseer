@@ -269,7 +269,7 @@ export const COUNTRY_CODE: Record<string, string> = {
   Netherlands: "NED", Belgium: "BEL", Portugal: "POR", Turkey: "TUR", Greece: "GRE", Argentina: "ARG",
   Austria: "AUT", Brazil: "BRA", China: "CHN", Denmark: "DEN", Finland: "FIN", Ireland: "IRL", Japan: "JPN",
   Mexico: "MEX", Norway: "NOR", Poland: "POL", Romania: "ROU", Russia: "RUS", Sweden: "SWE",
-  Switzerland: "SUI", USA: "USA",
+  Switzerland: "SUI", USA: "USA", Australia: "AUS", Europe: "EUR",
 };
 
 export const countryCode = (country: string) => COUNTRY_CODE[country] ?? country.slice(0, 3).toUpperCase();

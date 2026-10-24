@@ -49,6 +49,36 @@ npm install
 npm run dev
 ```
 
+## Basketball
+
+The same product for basketball lives under `/basketball` (sport switch at the top of the sidebar),
+with every football page mirrored: games, live scores, lookback, value bets, daily bets, previews,
+favourites, filters, generator, scanner, trends, team and league stats, predictor, leagues and track record.
+
+- **Leagues**: NBA, WNBA, NCAA men's (Division I), G League and Australia's NBL from ESPN's public
+  scoreboards; EuroLeague and EuroCup from the EuroLeague's public API. No keys.
+- **Model** (`pipeline/footballseer/basketball/model.py`): weighted ridge regression on each side's
+  points (offence, defence, home advantage, neutral sites, time decay). Margin and total are normal
+  around the expected values, with spreads measured from residuals; overtime resolves level scores.
+  Decay and shrinkage are tuned per league (NCAA's sparse schedule needs much less shrinkage).
+- **Markets**: moneyline, spread, total, team totals and winning margin for the game; for each half
+  and quarter, a three-way result (periods can end level), spread, total and team totals; and
+  half-time/full-time. Each period gets the league's fitted share of the points and its own spreads.
+  The 2nd half includes overtime, quarters are regulation only, and NCAA men's (two halves) has no
+  quarter markets. Spread and totals are priced at the bookmaker's line when ESPN publishes one,
+  otherwise at the model's fair spread and the league's average total; period lines scale the game's.
+  Every game carries its lines and period scores, so settlement is exact.
+- **Odds caveat**: ESPN keeps no odds for past games, so the backtest measures accuracy and calibration
+  but not ROI. Value-bet ROI and model-vs-market comparisons build up from live predictions, which
+  store the bookmaker's lines and prices in `data/basketball/ledger.csv`.
+
+```bash
+python -m footballseer basketball backtest   # one-off, ~3 min on first download (NCAA is ~450 scoreboard days)
+python -m footballseer basketball run        # daily, writes web/public/data/basketball/
+```
+
+Live basketball comes from `/api/basketball/live` (ESPN and EuroLeague feeds, same caching as football).
+
 ## Deploying (≈ $0/month)
 
 - **Web**: import the repo into Vercel (or Cloudflare Pages) with root directory `web`.

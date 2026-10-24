@@ -6,9 +6,13 @@ import { CalibrationChart } from "@/components/CalibrationChart";
 import { LABELS, pct } from "@/lib/format";
 import type { Summary } from "@/lib/types";
 
-export function CalibrationPanel({ summary }: { summary: Summary }) {
+export function CalibrationPanel({ summary, labels = LABELS, initial = "O2.5" }: {
+  summary: Pick<Summary, "markets">;
+  labels?: Record<string, string>;
+  initial?: string;
+}) {
   const keys = Object.keys(summary.markets);
-  const [m, setM] = useState("O2.5");
+  const [m, setM] = useState(initial);
   const s = summary.markets[m] ?? summary.markets[keys[0]];
 
   return (
@@ -21,14 +25,14 @@ export function CalibrationPanel({ summary }: { summary: Summary }) {
               onClick={() => setM(k)}
               className={`rounded-full border px-2.5 py-0.5 text-xs ${k === m ? "border-ink bg-ink text-bg" : "border-line text-ink-2 hover:text-ink"}`}
             >
-              {LABELS[k] ?? k}
+              {labels[k] ?? k}
             </button>
           ))}
         </div>
         <CalibrationChart data={s.calibration} />
       </div>
       <div>
-        <div className="mb-2 text-sm font-semibold">{LABELS[m]}: hit rate by confidence</div>
+        <div className="mb-2 text-sm font-semibold">{labels[m] ?? m}: hit rate by confidence</div>
         <p className="mb-3 text-xs text-ink-3">
           If you only took picks the model rated at least X% likely, this is how often they won.
           Base rate across all matches: {pct(s.base_rate)}. Brier score {s.brier.toFixed(3)} (lower is better).
