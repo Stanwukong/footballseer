@@ -66,7 +66,7 @@ async function Match({ params }: Pick<PageProps<"/match/[id]">, "params">) {
     <div className="space-y-4">
       {/* Match header */}
       <section className="overflow-hidden rounded-2xl border border-line bg-surface shadow-card">
-        <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-2.5 sm:px-6">
+        <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-2.5 sm:px-6" data-tour="match-head">
           {league && (
             <Link href={`/leagues/${league.code}`} className="flex min-w-0 items-center gap-2 text-sm hover:text-accent-text">
               <CountryTag country={league.country} />
@@ -80,7 +80,7 @@ async function Match({ params }: Pick<PageProps<"/match/[id]">, "params">) {
           <HeaderScore fixture={{ id: f.id, time: f.time, date: f.date }} />
           <TeamHead name={f.away} pos={pos(f.away)} stats={as} align="right" />
         </div>
-        <div className="border-t border-line px-4 pt-4 pb-5 sm:px-6">
+        <div className="border-t border-line px-4 pt-4 pb-5 sm:px-6" data-tour="prob">
           <p className="eyebrow mb-2">Pre-match probabilities</p>
           <ProbBar p={f.p} home={f.home} away={f.away} size="lg" />
         </div>

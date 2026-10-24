@@ -137,7 +137,7 @@ function Board({ fixtures, results, leagues, today, favouritesOnly = false, look
     <div className="space-y-4">
       {/* Date strip */}
       <div className="scrollbar-none -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-        <div className="inline-flex gap-1 rounded-xl border border-line bg-surface p-1 shadow-card">
+        <div className="inline-flex gap-1 rounded-xl border border-line bg-surface p-1 shadow-card" data-tour="days">
           {(liveIds.size > 0 || day === LIVE) && (
             <DayButton active={day === LIVE} onClick={() => set({ day: LIVE })} top="Live" bottom={`${liveIds.size} on`} live />
           )}
@@ -162,7 +162,7 @@ function Board({ fixtures, results, leagues, today, favouritesOnly = false, look
       </div>
 
       {/* Market tabs */}
-      <div className="scrollbar-none -mx-4 flex gap-1.5 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+      <div className="scrollbar-none -mx-4 flex gap-1.5 overflow-x-auto px-4 sm:mx-0 sm:px-0" data-tour="markets">
         {MARKET_TABS.map((t) => (
           <button key={t.id} type="button" onClick={() => set({ m: t.id })} className={chip(t.id === tab.id)}>
             {t.label}
@@ -182,7 +182,7 @@ function Board({ fixtures, results, leagues, today, favouritesOnly = false, look
             className="h-9 w-full rounded-lg border border-line bg-surface pr-3 pl-9 text-sm placeholder:text-ink-3 hover:border-line-strong focus:border-accent focus:outline-none"
           />
         </div>
-        <div role="radiogroup" aria-label="Sort" className="inline-flex rounded-lg border border-line bg-surface p-0.5">
+        <div role="radiogroup" aria-label="Sort" data-tour="sort" className="inline-flex rounded-lg border border-line bg-surface p-0.5">
           {[["league", "League"], ["time", "Kick-off"], ["prob", "Probability"]].map(([k, label]) => (
             <button
               key={k}
@@ -304,7 +304,7 @@ function MatchRow({ r, today, showLeague, league }: { r: Row; today: string; sho
   const now = live?.state === "in" && r.xg ? inPlay(r.xg, live.score, live.minute, live.red).p[r.pick!.key] : undefined;
   return (
     <li className="border-b border-line last:border-0">
-      <Link href={r.past ? `/leagues/${r.league}` : `/match/${r.id}`} className="flex items-center gap-1 py-2 pr-3 pl-1 transition-colors hover:bg-surface-2/70">
+      <Link href={r.past ? `/leagues/${r.league}` : `/match/${r.id}`} data-tour={r.past ? undefined : "match"} className="flex items-center gap-1 py-2 pr-3 pl-1 transition-colors hover:bg-surface-2/70">
         <div className="flex w-12 shrink-0 flex-col items-center sm:w-14">
           {!r.past && <StarButton id={r.id} label={`${r.home} v ${r.away}`} />}
           {live && !r.past ? (

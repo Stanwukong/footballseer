@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  BadgePercent, CalendarClock, CalendarDays, ChartColumn, Dices, FlaskConical, Flame, History, LayoutGrid, Menu, Newspaper,
+  BadgePercent, CalendarClock, CalendarDays, ChartColumn, Dices, Flame, History, LayoutGrid, Menu, Newspaper,
   Radar, Radio, Search, SlidersHorizontal, Star, Swords, Trophy, Users, X, type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -9,9 +9,11 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { OddsSwitch, ThemeSwitch } from "@/components/client";
+import { LogoMark } from "@/components/Logo";
+import { Tour } from "@/components/Tour";
 import { cx } from "@/components/ui";
-import { useLiveFeed } from "@/lib/live-client";
-import { NAV, type NavIcon } from "@/lib/nav";
+import { useBasketballFeed, useLiveFeed } from "@/lib/live-client";
+import { NAV, SPORTS, sportHref, sportOf, type NavIcon, type Sport } from "@/lib/nav";
 
 const ICONS: Record<NavIcon, LucideIcon> = {
   live: Radio, matches: LayoutGrid, value: BadgePercent, daily: CalendarDays, previews: Newspaper, favourites: Star,
@@ -19,38 +21,80 @@ const ICONS: Record<NavIcon, LucideIcon> = {
   leagueStats: ChartColumn, predictor: Swords, leagues: Trophy, record: History, lookback: CalendarClock,
 };
 
-function Brand() {
+function Brand({ sport }: { sport: Sport }) {
   return (
-    <Link href="/" className="flex shrink-0 items-center gap-2.5">
-      <span aria-hidden className="grid size-7 place-items-center rounded-lg bg-ink text-bg">
-        <FlaskConical size={15} strokeWidth={2} />
-      </span>
+    <Link href={sportHref(sport, "/")} className="flex shrink-0 items-center gap-2.5">
+      <LogoMark className="size-7" />
       <span className="font-display text-[17px] font-semibold tracking-tight">
-        Football<span className="text-accent-text">Seer</span>
+        {sport === "basketball" ? "Basketball" : "Football"}<span className="text-accent-text">Seer</span>
       </span>
     </Link>
   );
 }
 
+function LiveBadge({ count }: { count: number }) {
+  if (count <= 0) return null;
+  return (
+    <span className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-bad px-1.5 font-mono text-[10px] font-semibold text-white tabular" aria-label={`${count} games in play`}>
+      {count}
+    </span>
+  );
+}
+
+// One component per sport, so only the current sport's live feed is polled.
+function FootballLive() {
+  return <LiveBadge count={useLiveFeed().liveCount} />;
+}
+
+function BasketballLive() {
+  return <LiveBadge count={useBasketballFeed().liveCount} />;
+}
+
+function SportSwitch({ sport, onNavigate }: { sport: Sport; onNavigate?: () => void }) {
+  return (
+    <div role="tablist" aria-label="Sport" data-tour="sport" className="mx-1 grid grid-cols-2 rounded-lg border border-line bg-surface-2 p-0.5">
+      {SPORTS.map((s) => (
+        <Link
+          key={s.id}
+          href={sportHref(s.id, "/")}
+          role="tab"
+          aria-selected={sport === s.id}
+          onClick={onNavigate}
+          className={cx(
+            "inline-flex h-8 items-center justify-center rounded-md text-[13px] font-medium transition-colors",
+            sport === s.id ? "bg-surface text-ink shadow-card" : "text-ink-3 hover:text-ink",
+          )}
+        >
+          {s.label}
+        </Link>
+      ))}
+    </div>
+  );
+}
+
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
-  const active = (href: string) => (href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`));
-  const { liveCount } = useLiveFeed();
+  const sport = sportOf(pathname);
+  const home = sportHref(sport, "/");
+  const active = (href: string) => (href === home ? pathname === home : pathname === href || pathname.startsWith(`${href}/`));
   return (
     <nav aria-label="Primary" className="flex flex-col gap-5">
+      <SportSwitch sport={sport} onNavigate={onNavigate} />
       {NAV.map((s) => (
         <div key={s.title}>
           <p className="eyebrow px-3 pb-1.5">{s.title}</p>
           <ul className="flex flex-col gap-px">
             {s.items.map((i) => {
               const Icon = ICONS[i.icon];
-              const on = active(i.href);
+              const href = sportHref(sport, i.href);
+              const on = active(href);
               return (
                 <li key={i.href}>
                   <Link
-                    href={i.href}
+                    href={href}
                     onClick={onNavigate}
                     aria-current={on ? "page" : undefined}
+                    data-tour={`nav-${i.icon}`}
                     className={cx(
                       "flex h-9 items-center gap-3 rounded-lg px-3 text-sm transition-colors",
                       on ? "bg-surface-3 font-medium text-ink" : "text-ink-2 hover:bg-surface-2 hover:text-ink",
@@ -58,11 +102,7 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
                   >
                     <Icon size={16} strokeWidth={1.75} className={on ? "text-accent-text" : "text-ink-3"} />
                     {i.label}
-                    {i.icon === "live" && liveCount > 0 && (
-                      <span className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-bad px-1.5 font-mono text-[10px] font-semibold text-white tabular" aria-label={`${liveCount} matches in play`}>
-                        {liveCount}
-                      </span>
-                    )}
+                    {i.icon === "live" && (sport === "basketball" ? <BasketballLive /> : <FootballLive />)}
                   </Link>
                 </li>
               );
@@ -76,6 +116,7 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
 
 function SearchBox({ className = "", onDone }: { className?: string; onDone?: () => void }) {
   const router = useRouter();
+  const home = sportHref(sportOf(usePathname()), "/");
   const [q, setQ] = useState("");
   return (
     <form
@@ -83,7 +124,7 @@ function SearchBox({ className = "", onDone }: { className?: string; onDone?: ()
       className={cx("relative", className)}
       onSubmit={(e) => {
         e.preventDefault();
-        router.push(q.trim() ? `/?q=${encodeURIComponent(q.trim())}` : "/");
+        router.push(q.trim() ? `${home}?q=${encodeURIComponent(q.trim())}` : home);
         onDone?.();
       }}
     >
@@ -102,6 +143,7 @@ function SearchBox({ className = "", onDone }: { className?: string; onDone?: ()
 export function Shell({ children, footer }: { children: ReactNode; footer: ReactNode }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const sport = sportOf(pathname);
 
   // Close the drawer on navigation; Next keeps visited pages mounted, so state would otherwise survive.
   const [lastPath, setLastPath] = useState(pathname);
@@ -130,14 +172,15 @@ export function Shell({ children, footer }: { children: ReactNode; footer: React
             onClick={() => setOpen(true)}
             className="-ml-1.5 inline-flex size-9 items-center justify-center rounded-lg text-ink-2 hover:bg-surface-2 lg:hidden"
             aria-label="Open navigation"
+            data-tour="menu"
             aria-expanded={open}
           >
             <Menu size={20} />
           </button>
-          <Brand />
+          <Brand sport={sport} />
           <SearchBox className="ml-6 hidden w-full max-w-sm md:block" />
           <div className="ml-auto flex items-center gap-2">
-            <div className="hidden items-center gap-2 sm:flex">
+            <div className="hidden items-center gap-2 sm:flex" data-tour="odds">
               <OddsSwitch />
               <ThemeSwitch />
             </div>
@@ -179,7 +222,7 @@ export function Shell({ children, footer }: { children: ReactNode; footer: React
           )}
         >
           <div className="flex h-14 shrink-0 items-center justify-between border-b border-line px-4">
-            <Brand />
+            <Brand sport={sport} />
             <button type="button" onClick={() => setOpen(false)} className="inline-flex size-9 items-center justify-center rounded-lg text-ink-2 hover:bg-surface-2" aria-label="Close navigation">
               <X size={20} />
             </button>
@@ -188,7 +231,7 @@ export function Shell({ children, footer }: { children: ReactNode; footer: React
             <SearchBox className="mb-5 px-1" onDone={() => setOpen(false)} />
             <NavList onNavigate={() => setOpen(false)} />
           </div>
-          <div className="flex shrink-0 flex-col gap-3 border-t border-line p-4">
+          <div className="flex shrink-0 flex-col gap-3 border-t border-line p-4" data-tour="odds">
             <div className="flex items-center justify-between gap-3">
               <span className="eyebrow">Theme</span>
               <ThemeSwitch withLabels />
@@ -200,6 +243,8 @@ export function Shell({ children, footer }: { children: ReactNode; footer: React
           </div>
         </div>
       </div>
+
+      <Tour />
     </div>
   );
 }

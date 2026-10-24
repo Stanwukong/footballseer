@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs><clipPath id="eye"><path d="M7 32C15 17.5 49 17.5 57 32C49 46.5 15 46.5 7 32Z"/></clipPath></defs>
+  <rect width="64" height="64" rx="15" fill="#121211"/>
+  <path d="M7 32C15 17.5 49 17.5 57 32C49 46.5 15 46.5 7 32Z" fill="#f5f5f2"/>
+  <g clip-path="url(#eye)">
+    <circle cx="32" cy="32" r="12" fill="#0b7a52"/>
+    <circle cx="32" cy="32" r="12" fill="none" stroke="#08613f" stroke-width="1.5"/>
+    <g fill="none" stroke="#121211" stroke-width="1.6" stroke-linecap="round" opacity=".65">
+      <path d="M20 32Q32 38 44 32"/>
+      <path d="M32 20Q26 32 32 44"/>
+    </g>
+    <circle cx="32" cy="32" r="4.6" fill="#121211"/>
+    <circle cx="35.6" cy="27.8" r="2" fill="#fff"/>
+  </g>
+</svg>
