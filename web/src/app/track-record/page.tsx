@@ -70,7 +70,7 @@ function Section({ s, title, blurb, names }: { s: Summary; title: string; blurb:
                   const ahead = l.market_logloss != null && l.model_logloss_same! < l.market_logloss;
                   return (
                     <tr key={l.league} className="border-t border-line">
-                      <td className="py-1.5"><Link href={`/leagues/${l.league}`} className="hover:text-accent">{names[l.league] ?? l.league}</Link></td>
+                      <td className="py-1.5"><Link href={`/leagues/${l.league}`} className="hover:text-accent-text">{names[l.league] ?? l.league}</Link></td>
                       <td className="py-1.5 text-right">{l.n.toLocaleString()}</td>
                       <td className={`py-1.5 text-right ${ahead ? "font-medium text-good" : ""}`}>{(l.model_logloss_same ?? l.model_logloss).toFixed(3)}</td>
                       <td className="py-1.5 text-right text-ink-2">{l.market_logloss?.toFixed(3) ?? "–"}</td>
@@ -91,7 +91,7 @@ export default async function TrackRecordPage() {
   const names = Object.fromEntries(leagues.map((l) => [l.code, `${l.country} · ${l.name}`]));
   return (
     <>
-      <PageHeader title="Track record">
+      <PageHeader eyebrow="Explore" title="Track record">
         Every prediction is logged before kick-off and settled automatically. Nothing is deleted or hand-picked.
         We compare against the bookmakers&apos; own implied probabilities, the hardest benchmark there is.
       </PageHeader>

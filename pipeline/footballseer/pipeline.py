@@ -17,7 +17,7 @@ import numpy as np
 import pandas as pd
 
 from . import markets as mk
-from . import model, sources
+from . import espn, model, sources, stats
 from .leagues import ALL, BY_CODE, League
 
 log = logging.getLogger(__name__)
@@ -247,20 +247,87 @@ def _clean(v):
     return v
 
 
-def fixture_json(row: pd.Series, r: model.Ratings) -> dict:
+def fixture_json(row: pd.Series, r: model.Ratings, history: pd.DataFrame, share: float,
+                 corners: stats.Corners, espn_id: str | None = None) -> dict:
     m = model.score_matrix(row["xg_h"], row["xg_a"], r.rho)
     odds = {k: _clean(row.get(c)) for k, c in ODDS_MARKETS.items()}
+    xc = corners.expected(row["home"], row["away"])
     return {
         "id": row["id"], "league": row["league"], "date": str(row["date"].date()),
         "time": row.get("time") if isinstance(row.get("time"), str) else None,
         "home": row["home"], "away": row["away"],
         "xg": [round(row["xg_h"], 2), round(row["xg_a"], 2)],
-        "p": {k: row[k] for k in MARKETS},
+        "xc": [round(xc[0], 1), round(xc[1], 1)] if xc else None,
+        "p": {k: row[k] for k in MARKETS} | stats.period_markets(row["xg_h"], row["xg_a"], share)
+             | corners.markets(row["home"], row["away"]),
         "scores": mk.top_scores(m, 8),
         "matrix": [[round(float(v), 4) for v in rowv[:6]] for rowv in m[:6]],
         "odds": odds if any(v is not None for v in odds.values()) else None,
         "value": value_bets(row),
+        "h2h": stats.h2h(history, row["home"], row["away"]),
+        "espn": espn_id,
     }
+
+
+RESULT_DAYS = 7
+BACKTEST_COLS = ["1", "X", "2", "1X", "X2", "O1.5", "O2.5", "O3.5", "U2.5", "U3.5", "BTTS_Y", "BTTS_N",
+                 "odds_h", "odds_d", "odds_a", "odds_o25", "odds_u25"]
+
+
+def results_json(ledger: pd.DataFrame, bt: pd.DataFrame, today: date,
+                 known: dict[str, list[str]] | None = None) -> list[dict]:
+    """Every prediction from the last RESULT_DAYS days, settled or not, for the lookback.
+
+    A day uses the live ledger when it has predictions for that day, else the
+    walk-forward backtest, marked as such. football-data publishes results a day
+    or two late, so games it hasn't settled yet take ESPN's final score; the rest
+    go out with score null (still to be confirmed)."""
+    lo, hi = pd.Timestamp(today) - pd.Timedelta(days=RESULT_DAYS), pd.Timestamp(today)
+
+    def window(df: pd.DataFrame, source: str) -> pd.DataFrame:
+        return df[(df["date"] >= lo) & (df["date"] < hi)].assign(source=source) if not df.empty else df
+
+    live, back = window(ledger, "live"), window(bt, "backtest")
+    if not live.empty and not back.empty:
+        back = back[~back["date"].isin(live["date"])]
+    parts = [d for d in (live, back) if not d.empty]
+    if not parts:
+        return []
+    done = pd.concat(parts, ignore_index=True)
+    for col in ("hg", "ag"):
+        if col not in done:
+            done[col] = np.nan
+    done = done.sort_values(["date", "time"], na_position="last").reset_index(drop=True)
+
+    open_ = done[done["hg"].isna()]
+    late: dict = {}
+    if known and not open_.empty:
+        try:
+            late = espn.finals(open_, known)
+        except Exception:  # a bonus, like live scores; never fail the run over it
+            log.exception("ESPN results failed")
+
+    def score(i, r):
+        if pd.notna(r["hg"]) and pd.notna(r["ag"]):
+            return [int(r["hg"]), int(r["ag"])]
+        return late.get(i)
+
+    return [{
+        "id": r["id"], "source": r["source"], "league": r["league"], "date": str(r["date"].date()),
+        "time": r["time"] if isinstance(r.get("time"), str) else None, "home": r["home"], "away": r["away"],
+        "xg": [round(r["xg_h"], 2), round(r["xg_a"], 2)], "score": score(i, r),
+        "p": {k: _clean(r[k]) for k in MARKETS},
+        "odds": {k: _clean(r.get(c)) for k, c in ODDS_MARKETS.items()},
+    } for i, r in done.iterrows()]
+
+
+def backtest_json(bt: pd.DataFrame) -> dict:
+    """Columnar copy of the walk-forward predictions, for the browser-side strategy backtester."""
+    bt = bt.dropna(subset=["hg", "ag"]).sort_values("date")
+    cols = {c: [None if pd.isna(v) else round(float(v), 3 if c.startswith("odds") else 4) for v in bt[c]]
+            for c in BACKTEST_COLS}
+    return {"n": int(len(bt)), "league": bt["league"].tolist(), "date": bt["date"].dt.strftime("%Y-%m-%d").tolist(),
+            "hg": bt["hg"].astype(int).tolist(), "ag": bt["ag"].astype(int).tolist(), **cols}
 
 
 def run(today: date | None = None) -> None:
@@ -289,7 +356,22 @@ def run(today: date | None = None) -> None:
     ledger = update_ledger(preds, results, today)
 
     # ---- JSON for the web app
-    _write("fixtures.json", [fixture_json(r, ratings[r["league"]]) for _, r in preds.sort_values(["date", "time"], na_position="last").iterrows()] if len(preds) else [])
+    try:
+        links = espn.link(preds, known)
+    except Exception:  # live data is a bonus; never fail the run over it
+        log.exception("ESPN linking failed")
+        links = {}
+    shares = {c: stats.h1_share(df) for c, df in results.items()}
+    corners = {c: stats.Corners(df, pd.Timestamp(today)) for c, df in results.items()}
+    _write("fixtures.json", [fixture_json(r, ratings[r["league"]], results[r["league"]], shares[r["league"]],
+                                          corners[r["league"]], links.get(i))
+                             for i, r in preds.sort_values(["date", "time"], na_position="last").iterrows()]
+           if len(preds) else [])
+    _write("teams.json", {c: {t: stats.team_stats(results[c], t) for t in known[c]} for c in ratings})
+    bt = _read(BACKTEST)
+    _write("results.json", results_json(ledger, bt, today, known))
+    if not bt.empty:
+        _write("backtest.json", backtest_json(bt))
 
     leagues_out = []
     for lg in ALL:
@@ -314,6 +396,8 @@ def run(today: date | None = None) -> None:
             "home_win_rate": round(float((recent["hg"] > recent["ag"]).mean()), 3) if len(recent) else None,
             "fixtures": int((preds["league"] == lg.code).sum()) if len(preds) else 0,
             "teams": teams,
+            "standings": stats.standings(df, known[lg.code]),
+            "profile": stats.league_profile(df),
         })
     _write("leagues.json", leagues_out)
 
@@ -325,7 +409,7 @@ def run(today: date | None = None) -> None:
         "as_of": str(today), "leagues": len(leagues_out), "fixtures": int(len(preds)),
         "value_bets": int(sum(len(value_bets(r)) for _, r in preds.iterrows())) if len(preds) else 0,
         "data_source": "football-data.co.uk (Wayback mirror)" if sources._fd_down else "football-data.co.uk",
-        "labels": mk.LABELS,
+        "labels": mk.LABELS | mk.EXTRA_LABELS,
     })
 
 

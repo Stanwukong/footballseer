@@ -48,6 +48,9 @@ ODDS_COLUMNS = {
     "odds_o25": ["Avg>2.5", "BbAv>2.5", "B365>2.5", "AvgC>2.5"],
     "odds_u25": ["Avg<2.5", "BbAv<2.5", "B365<2.5", "AvgC<2.5"],
 }
+# Match statistics, only published for the main leagues: half-time goals, corners, cards.
+STAT_COLUMNS = {"hthg": "HTHG", "htag": "HTAG", "hc": "HC", "ac": "AC",
+                "hy": "HY", "ay": "AY", "hr": "HR", "ar": "AR"}
 
 
 # --------------------------------------------------------------------------- #
@@ -145,7 +148,7 @@ def _first(df: pd.DataFrame, cols: list[str]) -> pd.Series:
 
 
 def _normalise(df: pd.DataFrame, league: str, home_col: str, away_col: str,
-               hg_col: str | None, ag_col: str | None) -> pd.DataFrame:
+               hg_col: str | None, ag_col: str | None, season: str | None = None) -> pd.DataFrame:
     out = pd.DataFrame({
         "league": league,
         "date": pd.to_datetime(df["Date"], dayfirst=True, format="mixed", errors="coerce"),
@@ -157,6 +160,10 @@ def _normalise(df: pd.DataFrame, league: str, home_col: str, away_col: str,
     if hg_col:
         out["hg"] = pd.to_numeric(df[hg_col], errors="coerce")
         out["ag"] = pd.to_numeric(df[ag_col], errors="coerce")
+        for name, col in STAT_COLUMNS.items():
+            out[name] = pd.to_numeric(df[col], errors="coerce") if col in df.columns else float("nan")
+        # Extra leagues carry their own season label ("2026", "2025/2026").
+        out["season"] = season if season else df["Season"].astype(str) if "Season" in df.columns else ""
     for name, cols in ODDS_COLUMNS.items():
         out[name] = _first(df, cols)
     # Drop obviously broken prices (typos, swapped columns): a real book is 98-130%.
@@ -185,7 +192,7 @@ def load_results(lg: League, today: date, seasons: int = 3) -> pd.DataFrame:
             age = 6 if s == codes[-1] else 24 * 365
             raw = fetch(f"mmz4281/{s}/{lg.code}.csv", max_age_hours=age)
             if raw:
-                frames.append(_normalise(_read_csv(raw), lg.code, "HomeTeam", "AwayTeam", "FTHG", "FTAG"))
+                frames.append(_normalise(_read_csv(raw), lg.code, "HomeTeam", "AwayTeam", "FTHG", "FTAG", season=s))
     else:
         raw = fetch(f"new/{lg.code}.csv")
         if raw:
@@ -237,6 +244,9 @@ _ALIASES = {
     "west brom": "west bromwich albion", "nijmegen": "nec", "rennes": "stade rennais", "st etienne": "saint",
     "atletico mg": "ca mineiro", "athletico pr": "ca paranaense", "for sittard": "fortuna", "sociedad": "real",
     "betis": "real", "la coruna": "deportivo", "vallecano": "rayo", "espanol": "espanyol",
+    # ESPN spellings
+    "koln": "cologne", "rvs": "rovers", "inverness c": "caledonian thistle", "hamkam": "hamarkameratene",
+    "buyuksehyr": "istanbul basaksehir",
 }
 
 
@@ -343,7 +353,7 @@ def load_fixtures(today: date, known_teams: dict[str, list[str]], horizon_days: 
     if not frames:
         return pd.DataFrame(columns=["league", "date", "home", "away"])
     df = pd.concat(frames, ignore_index=True)
-    df = df[df["date"] <= end]
+    df = df[df["date"] <= end].drop_duplicates(subset=["league", "date", "home", "away"])
     # Only predict teams the model knows for that league.
     df = df[[h in known_teams.get(l, []) and a in known_teams.get(l, [])
              for l, h, a in zip(df["league"], df["home"], df["away"])]]

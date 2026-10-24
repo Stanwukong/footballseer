@@ -138,7 +138,7 @@ function ScreenerView({
           <button
             key={pr.label}
             onClick={() => set({ ...pr.params, league: league === "all" ? null : league, day: day === "all" ? null : day }, true)}
-            className="rounded-full border border-line bg-surface px-3 py-1 text-xs text-ink-2 hover:border-accent hover:text-accent"
+            className="rounded-full border border-line bg-surface px-3 py-1 text-xs text-ink-2 hover:border-accent hover:text-accent-text"
           >
             {pr.label}
           </button>
@@ -234,7 +234,7 @@ function ScreenerView({
                     <div className="text-ink-3 tabular">{f.time ?? ""}</div>
                   </td>
                   <td className="px-3 py-2.5 align-top">
-                    <Link href={`/match/${f.id}`} className="font-medium hover:text-accent">
+                    <Link href={`/match/${f.id}`} className="font-medium hover:text-accent-text">
                       {f.home} <span className="text-ink-3">v</span> {f.away}
                     </Link>
                     <div className="text-xs text-ink-3">

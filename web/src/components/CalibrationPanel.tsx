@@ -19,7 +19,7 @@ export function CalibrationPanel({ summary }: { summary: Summary }) {
             <button
               key={k}
               onClick={() => setM(k)}
-              className={`rounded-full border px-2.5 py-0.5 text-xs ${k === m ? "border-accent bg-accent-soft text-accent" : "border-line text-ink-2 hover:text-ink"}`}
+              className={`rounded-full border px-2.5 py-0.5 text-xs ${k === m ? "border-ink bg-ink text-bg" : "border-line text-ink-2 hover:text-ink"}`}
             >
               {LABELS[k] ?? k}
             </button>

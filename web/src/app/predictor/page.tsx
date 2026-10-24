@@ -10,7 +10,7 @@ export default async function PredictorPage() {
   const leagues = await getLeagues();
   return (
     <>
-      <PageHeader title="Matchup predictor">
+      <PageHeader eyebrow="Tools" title="Matchup predictor">
         Price any pairing in any league, including matches that aren&apos;t scheduled.
         It runs the same model as the predictions page, in your browser.
       </PageHeader>

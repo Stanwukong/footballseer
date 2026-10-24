@@ -100,6 +100,10 @@ def test_season_codes():
       "FC Porto": "Porto"}),
     (["M'gladbach", "Dortmund", "Bayern Munich"],
      {"Borussia Mönchengladbach": "M'gladbach", "Borussia Dortmund": "Dortmund", "FC Bayern München": "Bayern Munich"}),
+    (["FC Koln", "Schalke 04", "Raith Rvs", "Inverness C", "HamKam", "Buyuksehyr", "Besiktas"],
+     {"FC Cologne": "FC Koln", "Schalke 04": "Schalke 04", "Raith Rovers": "Raith Rvs",
+      "Inverness Caledonian Thistle": "Inverness C", "Hamarkameratene": "HamKam",
+      "Istanbul Basaksehir": "Buyuksehyr", "Besiktas": "Besiktas"}),
 ])
 def test_match_teams_one_to_one(known, expected):
     assert match_teams(list(expected), known) == expected

@@ -28,7 +28,9 @@ data/      Prediction ledger + backtest (committed, so the track record is audit
    is flagged.
 5. **Track record**: live predictions go into `data/ledger.csv` before kick-off and
    are settled when results arrive. `backtest` replays the season week by week,
-   using only data that existed at the time.
+   using only data that existed at the time. `/lookback` shows every prediction from the
+   past seven days next to its result, with ESPN final scores filling in until
+   football-data publishes.
 
 ## Running it
 
@@ -50,7 +52,9 @@ npm run dev
 ## Deploying (≈ $0/month)
 
 - **Web**: import the repo into Vercel (or Cloudflare Pages) with root directory `web`.
-  Every page is static, so it serves from the CDN.
+  Every page is static, so it serves from the CDN. The one exception is live scores: `/api/live` and
+  `/api/live/[league]/[event]` are serverless functions that proxy ESPN with 15–20 s caching, so
+  however many browsers poll, upstream sees a few requests a minute.
 - **Pipeline**: `.github/workflows/predict.yml` runs twice a day on GitHub Actions,
   commits the refreshed JSON, and the push triggers a redeploy.
 - A database (e.g. Neon Postgres) is only needed once you add accounts, saved

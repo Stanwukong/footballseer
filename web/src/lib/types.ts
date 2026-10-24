@@ -9,6 +9,9 @@ export interface ValueBet {
   edge: number;
 }
 
+/** [date, home, away, home goals, away goals], newest first. */
+export type H2H = [string, string, string, number, number];
+
 export interface Fixture {
   id: string;
   league: string;
@@ -17,14 +20,100 @@ export interface Fixture {
   home: string;
   away: string;
   xg: [number, number];
+  /** Expected corners, main leagues only. */
+  xc: [number, number] | null;
   p: Probs;
   scores: { score: string; p: number }[];
   matrix: number[][];
   odds: Record<string, number | null> | null;
   value: ValueBet[];
+  h2h: H2H[];
+  /** ESPN event, "leagueSlug/eventId", for live scores. Null when ESPN doesn't cover it. */
+  espn: string | null;
 }
 
-export type FixtureSlim = Omit<Fixture, "scores" | "matrix">;
+export type FixtureSlim = Omit<Fixture, "scores" | "matrix" | "h2h">;
+
+/** A prediction from the last seven days, for the lookback. */
+export interface Result {
+  id: string;
+  /** "backtest" on days with no live prediction: the walk-forward replay stands in. */
+  source: "live" | "backtest";
+  league: string;
+  date: string;
+  time: string | null;
+  home: string;
+  away: string;
+  xg: [number, number];
+  /** Null until the result is in. */
+  score: [number, number] | null;
+  p: Probs;
+  odds: Record<string, number | null>;
+}
+
+/** Hit counts over a set of matches; half-time events use `nht` as the denominator. */
+export interface Rate {
+  n: number;
+  nht?: number;
+  gf?: number;
+  ga?: number;
+  c?: Record<string, number>;
+  /** Average corners [for, against]. */
+  corners?: [number, number];
+}
+
+export interface Trend {
+  e: string;
+  n: number;
+  s: "all" | "home" | "away";
+}
+
+/** [date, opponent, venue, goals for, goals against, HT for, HT against], newest first. */
+export type TeamMatch = [string, string, "H" | "A", number, number, number | null, number | null];
+
+export interface TeamStats {
+  form: string;
+  last: TeamMatch[];
+  rates: { l10: Rate; all: Rate; home: Rate; away: Rate };
+  avg5: [number, number];
+  trends: Trend[];
+}
+
+export type Teams = Record<string, Record<string, TeamStats>>;
+
+/** [played, won, drawn, lost, for, against, points] */
+export type TableLine = [number, number, number, number, number, number, number];
+
+export interface StandingRow {
+  team: string;
+  all: TableLine;
+  home: TableLine;
+  away: TableLine;
+  form: string;
+}
+
+export interface LeagueProfile {
+  n: number;
+  season: string;
+  goals: number;
+  home_goals: number;
+  away_goals: number;
+  h1_share?: number;
+  rates: Record<string, number>;
+  corners?: number;
+  yellows?: number;
+  reds?: number;
+}
+
+/** Walk-forward predictions in columns, for the strategy backtester. */
+export interface Backtest {
+  n: number;
+  league: string[];
+  date: string[];
+  hg: number[];
+  ag: number[];
+  [market: string]: (number | null)[] | string[] | number[] | number;
+}
 
 export interface TeamRating {
   team: string;
@@ -48,7 +137,11 @@ export interface League {
   home_win_rate: number | null;
   fixtures: number;
   teams: TeamRating[];
+  standings: StandingRow[];
+  profile: LeagueProfile;
 }
+
+export type LeagueInfo = Pick<League, "code" | "country" | "name" | "tier">;
 
 export interface Meta {
   generated_at: string;
@@ -104,4 +197,74 @@ export interface Summary {
 export interface TrackRecord {
   live: Summary | null;
   backtest: Summary | null;
+}
+
+// --------------------------------------------------------------------------- //
+// Live data (ESPN), served by /api/live
+// --------------------------------------------------------------------------- //
+
+export type LiveState = "pre" | "in" | "post";
+
+export interface LiveIncident {
+  minute: string;
+  kind: "goal" | "own-goal" | "penalty" | "missed-penalty" | "yellow" | "red" | "sub" | "period" | "other";
+  side: "home" | "away" | null;
+  text: string;
+  player?: string;
+  /** Player coming off, for substitutions. */
+  playerOut?: string;
+}
+
+/** Headline team numbers from the scoreboard feed. */
+export interface LiveTeamStats {
+  possession?: number;
+  shots?: number;
+  onTarget?: number;
+  corners?: number;
+  fouls?: number;
+}
+
+export interface LiveEvent {
+  /** "leagueSlug/eventId" */
+  id: string;
+  /** Our league code. */
+  league: string;
+  /** Our fixture id, when the pipeline linked one. */
+  fixture: string | null;
+  state: LiveState;
+  /** Status as shown: "65'", "HT", "FT", "Postponed". */
+  status: string;
+  /** Minutes played, for the in-play model. */
+  minute: number;
+  kickoff: string;
+  home: string;
+  away: string;
+  score: [number, number];
+  red: [number, number];
+  stats: { home: LiveTeamStats; away: LiveTeamStats } | null;
+  incidents: LiveIncident[];
+}
+
+export interface LiveFeed {
+  updated: string;
+  source: string;
+  events: LiveEvent[];
+}
+
+export interface LineupPlayer {
+  name: string;
+  pos: string;
+  jersey: string;
+  subbedIn: boolean;
+  subbedOut: boolean;
+}
+
+export interface LiveDetail {
+  event: LiveEvent;
+  /** Full stats box: [label, home, away]. */
+  stats: [string, string, string][];
+  timeline: LiveIncident[];
+  lineups: { side: "home" | "away"; formation: string | null; starters: LineupPlayer[]; subs: LineupPlayer[] }[];
+  /** Newest first. */
+  commentary: { minute: string; text: string }[];
 }

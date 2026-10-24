@@ -22,6 +22,15 @@ LABELS = {
     "H_CS": "Home clean sheet", "A_CS": "Away clean sheet",
 }
 
+# Half-time and corners markets (stats.py). Exported, but not kept in the ledger.
+EXTRA_LABELS = {
+    "HT_1": "Home leads at half-time", "HT_X": "Level at half-time", "HT_2": "Away leads at half-time",
+    "HT_O0.5": "Over 0.5 goals 1st half", "HT_O1.5": "Over 1.5 goals 1st half", "HT_BTTS_Y": "Both score 1st half",
+    "2H_O0.5": "Over 0.5 goals 2nd half", "2H_O1.5": "Over 1.5 goals 2nd half", "2H_BTTS_Y": "Both score 2nd half",
+    **{f"C_O{l}": f"Over {l} corners" for l in (7.5, 8.5, 9.5, 10.5)},
+    **{f"C_U{l}": f"Under {l} corners" for l in (7.5, 8.5, 9.5, 10.5)},
+}
+
 
 def markets(m: np.ndarray) -> dict[str, float]:
     i, j = np.indices(m.shape)
