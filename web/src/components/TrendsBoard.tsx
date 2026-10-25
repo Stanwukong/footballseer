@@ -9,6 +9,7 @@ import { Card, CountryTag, EmptyState, Field } from "@/components/ui";
 import { TREND_EVENTS as BB_TREND_EVENTS, trendText as bbTrendText } from "@/lib/basketball/format";
 import { formatDay, TREND_EVENTS, trendText } from "@/lib/format";
 import type { Sport } from "@/lib/nav";
+import { useToday } from "@/lib/today";
 import type { LeagueInfo, Trend } from "@/lib/types";
 
 export interface TrendItem extends Trend {
@@ -23,7 +24,8 @@ const SPORT = {
 };
 
 /** Streaks for teams playing in the next few days, longest first or grouped by match. */
-export function TrendsBoard({ items, leagues, today, sport = "football" }: { items: TrendItem[]; leagues: Pick<LeagueInfo, "code" | "country" | "name" | "tier">[]; today: string; sport?: Sport }) {
+export function TrendsBoard({ items, leagues, today: asOf, sport = "football" }: { items: TrendItem[]; leagues: Pick<LeagueInfo, "code" | "country" | "name" | "tier">[]; today: string; sport?: Sport }) {
+  const today = useToday(asOf);
   const cfg = SPORT[sport];
   const [events, setEvents] = useState<string[]>([]);
   const [days, setDays] = useState<string[]>([]);

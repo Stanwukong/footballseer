@@ -8,6 +8,7 @@ import { DayPicker, LeaguePicker, MarketChips, RangeInputs } from "@/components/
 import { button, Card, Field } from "@/components/ui";
 import { LABELS } from "@/lib/format";
 import { buildAcca, PICK_MARKETS } from "@/lib/picks";
+import { useToday } from "@/lib/today";
 import type { FixtureSlim, LeagueInfo } from "@/lib/types";
 
 const DEFAULTS = {
@@ -23,7 +24,8 @@ const DEFAULTS = {
  * BetMines Machine: choose markets, days, leagues, the number of matches and
  * odds/probability bands, and get the likeliest accumulator that fits.
  */
-export function Generator({ fixtures, leagues, today }: { fixtures: FixtureSlim[]; leagues: LeagueInfo[]; today: string }) {
+export function Generator({ fixtures, leagues, today: asOf }: { fixtures: FixtureSlim[]; leagues: LeagueInfo[]; today: string }) {
+  const today = useToday(asOf);
   const [s, setS] = useState(DEFAULTS);
   const set = (patch: Partial<typeof DEFAULTS>) => setS((x) => ({ ...x, ...patch }));
   const days = useMemo(() => [...new Set(fixtures.map((f) => f.date))].sort(), [fixtures]);

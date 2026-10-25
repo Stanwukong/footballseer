@@ -8,6 +8,7 @@ import { Segmented } from "@/components/TeamTables";
 import { Card, chip, cx, EmptyState, Field } from "@/components/ui";
 import { EVENTS, teamRate } from "@/lib/events";
 import { formatDay } from "@/lib/format";
+import { useToday } from "@/lib/today";
 import type { LeagueInfo, Rate } from "@/lib/types";
 
 export interface TeamRow {
@@ -26,7 +27,8 @@ const TEAM_EVENTS = [
 ];
 
 /** Which teams hit an event most often (BetMines' advanced team stats). */
-export function TeamStatsBoard({ rows, leagues, today }: { rows: TeamRow[]; leagues: LeagueInfo[]; today: string }) {
+export function TeamStatsBoard({ rows, leagues, today: asOf }: { rows: TeamRow[]; leagues: LeagueInfo[]; today: string }) {
+  const today = useToday(asOf);
   const [event, setEvent] = useState("O2.5");
   const [sample, setSample] = useState<"l10" | "all" | "home" | "away">("l10");
   const [lgs, setLgs] = useState<string[]>([]);

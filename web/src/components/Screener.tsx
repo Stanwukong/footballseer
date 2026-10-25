@@ -7,6 +7,7 @@ import { Suspense, useMemo } from "react";
 import { EdgeBadge, Meter } from "@/components/ui";
 import { ProbBar } from "@/components/ProbBar";
 import { fairOdds, formatDay, LABELS, marketName, pct } from "@/lib/format";
+import { useToday } from "@/lib/today";
 import type { FixtureSlim } from "@/lib/types";
 
 type LeagueInfo = { code: string; country: string; name: string; tier: number };
@@ -57,10 +58,11 @@ function ScreenerWithUrl(props: ScreenerProps) {
 function ScreenerView({
   fixtures,
   leagues,
-  today,
+  today: asOf,
   defaults = {},
   sp,
 }: ScreenerProps & { sp: URLSearchParams | ReturnType<typeof useSearchParams> }) {
+  const today = useToday(asOf);
   const router = useRouter();
   const pathname = usePathname();
   const get = (k: string, d: string) => sp.get(k) ?? defaults[k] ?? d;

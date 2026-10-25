@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { DayName } from "@/components/client";
 import { CountryTag, PageHeader, ProbPill } from "@/components/ui";
 import { getFixtures, getLeagues, getMeta, getTeams } from "@/lib/data";
-import { formatDay, LABELS, topTip } from "@/lib/format";
+import { LABELS, topTip } from "@/lib/format";
 import { previewParagraphs } from "@/lib/preview";
 
 export const metadata: Metadata = { title: "Match previews" };
@@ -33,7 +34,7 @@ export default async function PreviewsPage() {
               <div className="flex items-center gap-2 text-xs text-ink-3">
                 <CountryTag country={l?.country ?? ""} />
                 <span className="truncate">{l?.name}</span>
-                <span className="ml-auto shrink-0 font-mono text-[11px]">{formatDay(f.date, meta.as_of)} {f.time ?? ""}</span>
+                <span className="ml-auto shrink-0 font-mono text-[11px]"><DayName iso={f.date} asOf={meta.as_of} /> {f.time ?? ""}</span>
               </div>
               <h2 className="mt-3 font-display text-lg leading-snug font-semibold tracking-tight">
                 <Link href={`/match/${f.id}#preview`} className="hover:text-accent-text">{f.home} vs {f.away}: prediction and preview</Link>

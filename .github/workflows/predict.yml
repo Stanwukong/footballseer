@@ -2,6 +2,9 @@ name: predict
 
 on:
   schedule:
+    # GitHub often starts scheduled runs hours late, so a run just after midnight
+    # rolls the date over and settles yesterday before the day's matches begin.
+    - cron: "30 0 * * *"   # overnight run: settle yesterday, roll the date
     - cron: "15 6 * * *"   # morning run: new fixtures + odds
     - cron: "15 15 * * *"  # afternoon run: late odds, settle early kick-offs
   workflow_dispatch:

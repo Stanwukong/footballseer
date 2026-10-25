@@ -164,14 +164,25 @@ export function getLiveFeed(): Promise<LiveFeed> {
   return cached("feed", FEED_TTL, async () => {
     const { fixtures, fixtureOf } = await fixtureIndex();
     // Only leagues with a fixture around today; all of them if the pipeline data is stale.
-    const now = Date.now();
-    const near = new Set(
-      fixtures
-        .filter((f) => f.espn && Math.abs(Date.parse(f.date) - now) < 2 * 86_400_000)
-        .map((f) => f.espn!.split("/")[0]),
-    );
-    const slugs = near.size ? [...near] : Object.keys(SLUG_TO_CODE);
-    const jobs = slugs.flatMap((slug) => feedDates().map((d) => ({ slug, d })));
+    const now = new Date();
+    const today = now.toISOString().slice(0, 10);
+    const near = new Map<string, Set<string>>();
+    for (const f of fixtures) {
+      if (!f.espn || Math.abs(Date.parse(f.date) - now.getTime()) >= 2 * 86_400_000) continue;
+      const slug = f.espn.split("/")[0];
+      const dates = near.get(slug) ?? new Set(feedDates(now));
+      near.set(slug, dates);
+      // A fixture from an earlier day is still here until the pipeline next runs and settles it;
+      // fetch its own scoreboard so it shows the result. Kick-offs before 06:00 (UK) sit on ESPN's previous day.
+      if (f.date < today) {
+        const d = new Date(`${f.date}T00:00:00Z`);
+        dates.add(ymd(d));
+        if (!f.time || f.time < "06:00") dates.add(ymd(new Date(d.getTime() - 86_400_000)));
+      }
+    }
+    const jobs = near.size
+      ? [...near].flatMap(([slug, dates]) => [...dates].map((d) => ({ slug, d })))
+      : Object.keys(SLUG_TO_CODE).flatMap((slug) => feedDates(now).map((d) => ({ slug, d })));
     const pages = await Promise.allSettled(jobs.map((j) => getJson(`${BASE}/${j.slug}/scoreboard?dates=${j.d}`).then((data) => ({ ...j, data }))));
     const seen = new Set<string>();
     const events: LiveEvent[] = [];

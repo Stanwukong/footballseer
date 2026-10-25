@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { Odds } from "@/components/client";
+import { DayName, Odds } from "@/components/client";
 import { CountryTag, ProbPill } from "@/components/ui";
 import { formatDay, marketName, pct, pickText } from "@/lib/format";
 import type { Acca } from "@/lib/picks";
@@ -38,7 +38,7 @@ export function AccaCard({ title, subtitle, acca, leagues, today }: {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 text-[11px] text-ink-3">
                       {l && <CountryTag country={l.country} />}
-                      <span className="truncate">{l?.name} · {formatDay(c.f.date, today)} {c.f.time ?? ""}</span>
+                      <span className="truncate">{l?.name} · {today ? <DayName iso={c.f.date} asOf={today} /> : formatDay(c.f.date)} {c.f.time ?? ""}</span>
                     </div>
                     <div className="mt-1 truncate text-sm font-medium">{c.f.home} <span className="text-ink-3">v</span> {c.f.away}</div>
                     <div className="mt-0.5 truncate text-xs text-ink-2" title={marketName(c.key, c.f.home, c.f.away)}>

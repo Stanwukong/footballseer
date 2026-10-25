@@ -3,8 +3,9 @@
 import { Monitor, Moon, Star, Sun } from "lucide-react";
 
 import { cx } from "@/components/ui";
-import { formatOdds, type OddsFormat } from "@/lib/format";
+import { formatDay, formatOdds, type OddsFormat } from "@/lib/format";
 import { useFavourites, useOddsFormat, useTheme, type Theme } from "@/lib/prefs";
+import { useToday } from "@/lib/today";
 
 /**
  * Odds in the reader's chosen format. Without a bookmaker price, shows the
@@ -103,4 +104,14 @@ export function OddsSwitch() {
       ))}
     </div>
   );
+}
+
+/**
+ * "Today", "Tomorrow", "Yesterday" or the date, against the viewer's today
+ * rather than the pipeline's as_of. Without `iso`, today's own date.
+ */
+export function DayName({ iso, asOf, short = false }: { iso?: string; asOf: string; short?: boolean }) {
+  const today = useToday(asOf);
+  const s = iso ? formatDay(iso, today) : formatDay(today);
+  return short ? s.replace("Tomorrow", "Tmrw") : s;
 }

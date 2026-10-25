@@ -10,6 +10,7 @@ import { button, Card, chip, cx, EmptyState, Field, input, ProbPill } from "@/co
 import { EVENTS, EVENT_BY_KEY, h2hRate, teamRate } from "@/lib/events";
 import { formatDay, ODDS_KEY, pct, prob } from "@/lib/format";
 import { useJsonPref } from "@/lib/prefs";
+import { useToday } from "@/lib/today";
 import type { FixtureSlim, H2H, LeagueInfo, Rate } from "@/lib/types";
 
 export interface FilterRow {
@@ -42,7 +43,8 @@ const PRESETS: { name: string; c: Partial<Criteria> }[] = [
 ];
 
 /** BetMines' statistical filter: find matches where both teams' records back an event. */
-export function AdvancedFilters({ rows, leagues, today }: { rows: FilterRow[]; leagues: LeagueInfo[]; today: string }) {
+export function AdvancedFilters({ rows, leagues, today: asOf }: { rows: FilterRow[]; leagues: LeagueInfo[]; today: string }) {
+  const today = useToday(asOf);
   const [c, setC] = useState<Criteria>(DEFAULTS);
   const [saved, setSaved] = useJsonPref<{ name: string; c: Criteria }[]>("fs-saved-filters", []);
   const [name, setName] = useState("");

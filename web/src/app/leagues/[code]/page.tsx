@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
-import { StarButton } from "@/components/client";
+import { DayName, StarButton } from "@/components/client";
 import { StandingsTable } from "@/components/TeamTables";
 import { Card, CountryTag, PageHeader, PageSkeleton, ProbPill, Stat } from "@/components/ui";
 import { getFixtures, getLeagues, getMeta, getTeams } from "@/lib/data";
@@ -114,7 +114,7 @@ async function League({ params }: Pick<PageProps<"/leagues/[code]">, "params">) 
                     <li key={f.id}>
                       <Link href={`/match/${f.id}`} className="flex items-center gap-3 px-4 py-2.5 hover:bg-surface-2/70 sm:px-5">
                         <span className="w-14 shrink-0 font-mono text-[11px] text-ink-3">
-                          {formatDay(f.date, meta.as_of).replace("Tomorrow", "Tmrw")}<br />{f.time}
+                          <DayName iso={f.date} asOf={meta.as_of} short /><br />{f.time}
                         </span>
                         <span className="min-w-0 flex-1 text-sm">
                           <span className="block truncate font-medium">{f.home}</span>

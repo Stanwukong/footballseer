@@ -13,6 +13,7 @@ import { inPlay } from "@/lib/inplay";
 import { useLiveFeed } from "@/lib/live-client";
 import { useFavourites } from "@/lib/prefs";
 import { settle } from "@/lib/settle";
+import { useToday } from "@/lib/today";
 import type { FixtureSlim, LeagueInfo, LiveEvent, Result } from "@/lib/types";
 import { EMPTY_PARAMS, useUrlState } from "@/lib/url";
 
@@ -60,7 +61,8 @@ function BoardWithUrl(props: Props) {
   return <Board {...props} sp={useSearchParams()} />;
 }
 
-function Board({ fixtures, results, leagues, today, favouritesOnly = false, lookback = false, sp }: Props & { sp: URLSearchParams | ReturnType<typeof useSearchParams> }) {
+function Board({ fixtures, results, leagues, today: asOf, favouritesOnly = false, lookback = false, sp }: Props & { sp: URLSearchParams | ReturnType<typeof useSearchParams> }) {
+  const today = useToday(asOf);
   const days = useMemo(() => [...new Set((lookback ? results : fixtures).map((f) => f.date))].sort(), [lookback, results, fixtures]);
   const defaultDay = lookback ? (days.at(-1) ?? WEEK) : favouritesOnly ? "all" : days.includes(today) ? today : (days[0] ?? "all");
   const { get, set } = useUrlState(sp, { day: defaultDay, m: "top", sort: "league", q: "" });

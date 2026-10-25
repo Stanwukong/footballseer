@@ -11,6 +11,7 @@ import { button, Card, chip, cx, EmptyState, Field, input, ProbPill, Stat } from
 import { formatDay, LABELS, pct, signedPct } from "@/lib/format";
 import { useJsonPref } from "@/lib/prefs";
 import { settle } from "@/lib/settle";
+import { useToday } from "@/lib/today";
 import type { Backtest, FixtureSlim, LeagueInfo } from "@/lib/types";
 
 const OUTCOMES = ["1", "X", "2", "1X", "X2", "O1.5", "O2.5", "O3.5", "U2.5", "U3.5", "BTTS_Y", "BTTS_N"];
@@ -107,7 +108,8 @@ function summarise(bt: Backtest, idx: number[], s: Strategy): Summary & { byLeag
  * probabilities, the bookmaker odds and the edge. It is backtested on the
  * walk-forward predictions and run against upcoming fixtures.
  */
-export function Scanner({ fixtures, leagues, today }: { fixtures: FixtureSlim[]; leagues: LeagueInfo[]; today: string }) {
+export function Scanner({ fixtures, leagues, today: asOf }: { fixtures: FixtureSlim[]; leagues: LeagueInfo[]; today: string }) {
+  const today = useToday(asOf);
   const [bt, setBt] = useState<Backtest | null>(null);
   const [failed, setFailed] = useState(false);
   const [s, setS] = useState<Strategy>(SUGGESTED[1]);
