@@ -14,6 +14,8 @@ export function CalibrationPanel({ summary, labels = LABELS, initial = "O2.5" }:
   const keys = Object.keys(summary.markets);
   const [m, setM] = useState(initial);
   const s = summary.markets[m] ?? summary.markets[keys[0]];
+  // A young live record has settled games but too few to bucket by confidence yet.
+  if (!s) return <p className="text-sm text-ink-3">Not enough settled predictions to chart calibration yet.</p>;
 
   return (
     <div className="grid gap-6 md:grid-cols-2">
