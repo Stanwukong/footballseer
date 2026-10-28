@@ -9,7 +9,8 @@ export { playerKeys } from "../names";
 const bo3 = (s: number) => s * s * (3 - 2 * s);
 const bo5 = (s: number) => s ** 3 * (10 - 15 * s + 6 * s * s);
 
-export function bestOfFive(p: number) {
+/** The per-set chance that wins a best-of-three match with chance p. */
+export function setChance(p: number) {
   if (p <= 0 || p >= 1) return p;
   let lo = 0, hi = 1;
   for (let i = 0; i < 50; i++) {
@@ -17,7 +18,12 @@ export function bestOfFive(p: number) {
     if (bo3(mid) < p) lo = mid;
     else hi = mid;
   }
-  return bo5((lo + hi) / 2);
+  return (lo + hi) / 2;
+}
+
+export function bestOfFive(p: number) {
+  if (p <= 0 || p >= 1) return p;
+  return bo5(setChance(p));
 }
 
 /** Chance for the player `gap` Elo points ahead. */

@@ -1,5 +1,7 @@
 // Shapes of the JSON written by pipeline/footballseer/pipeline.py.
 
+import type { Sport } from "./nav";
+
 export type Probs = Record<string, number>;
 
 export interface ValueBet {
@@ -282,4 +284,43 @@ export interface LiveDetail {
   lineups: { side: "home" | "away"; formation: string | null; starters: LineupPlayer[]; subs: LineupPlayer[] }[];
   /** Newest first. */
   commentary: { minute: string; text: string }[];
+}
+
+// --------------------------------------------------------------------------- //
+// A SportyBet booking code, decoded and priced by our models: /api/booking-code
+// --------------------------------------------------------------------------- //
+
+export interface SlipLeg {
+  /** "sr:match:N" */
+  eventId: string;
+  /** Null for a sport we don't model. */
+  sport: Sport | null;
+  sportName: string;
+  competition: string;
+  start: string;
+  /** Started or finished legs are still priced, but from before the start. */
+  state: "pre" | "in" | "post";
+  home: string;
+  away: string;
+  market: string;
+  pick: string;
+  odds: number;
+  /** The bookmaker's own chance for the pick, from SportyBet. */
+  book: number | null;
+  /** Our chance the pick wins, and that it's void (a draw-no-bet draw, a whole-number line landing). */
+  model: { p: number; push: number } | null;
+  /** Why there's no model price, or a caveat on it. */
+  note: string | null;
+  /** Our page for the match or the players. */
+  links: { label: string; href: string }[];
+  /** A line of form for context: "Elo 2302 (#1) · 54–3 this year · hard 118–9". */
+  context: string[];
+}
+
+export interface Slip {
+  code: string;
+  country: string;
+  legs: SlipLeg[];
+  /** Product of the legs' odds. */
+  odds: number;
 }

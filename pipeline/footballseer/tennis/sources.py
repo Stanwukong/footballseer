@@ -5,14 +5,19 @@ draw, qualifying included, so sampling one date every few days covers every
 tour-level match. Both tours come back from either endpoint.
 
 Returns one row per completed singles match:
-    id, date, tour, event, round, p1, p2, p1_id, p2_id, winner (1 or 2), sets, best_of, status
+    id, date, tour, event, surface, round, p1, p2, p1_id, p2_id, p1_country, p2_country (three-letter codes),
+    winner (1 or 2), sets, best_of, status
 where `status` is "final" or "retired". Walkovers are dropped: nobody played.
+
+ESPN doesn't give the court surface, so it comes from the tournament's name
+(see surface): the clay and grass swings are short lists, everything else is hard.
 """
 
 from __future__ import annotations
 
 import json
 import logging
+import re
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, timedelta
@@ -27,7 +32,28 @@ ESPN = "https://site.api.espn.com/apis/site/v2/sports/tennis"
 TOURS = {"mens-singles": "ATP", "womens-singles": "WTA"}
 STEP_DAYS = 3        # tournaments run at least five days, so every third day sees each draw
 SETTLED_DAYS = 30    # older scoreboards no longer change; cache them for good
-COLS = ["id", "date", "tour", "event", "round", "p1", "p2", "p1_id", "p2_id", "winner", "sets", "best_of", "status"]
+COLS = ["id", "date", "tour", "event", "surface", "round", "p1", "p2", "p1_id", "p2_id", "p1_country", "p2_country",
+        "winner", "sets", "best_of", "status"]
+
+CLAY = re.compile(
+    r"roland garros|french open|madrid|internazionali|italia|monte.carlo|barcelona|hamburg|rio open|bmw open|munich|"
+    r"generali open|kitzb|tiriac|bucharest|clay court|chile open|santiago|umag|croatia open|gstaad|swiss open|geneva|"
+    r"hassan|marrakech|argentina open|buenos aires|estoril|colsanitas|bogota|cordoba|nordea|bastad|charleston|"
+    r"rabat|strasbourg|palermo|prague|lausanne|budapest|parma|rouen",
+    re.I,
+)
+GRASS = re.compile(r"wimbledon|eastbourne|lib[eé]ma|hertogenbosch|halle|terra wortmann|queen|hsbc championships|mallorca|"
+                   r"boss open|hall of fame|newport|birmingham|nottingham|bad homburg|berlin", re.I)
+
+
+def surface(event: str, day: date) -> str:
+    """"hard", "clay" or "grass" for a tour-level event, from its name and date."""
+    if GRASS.search(event) and day.month in (6, 7):
+        return "grass"
+    # Stuttgart is grass for the men in June, clay for the women in April; Lyon moved off clay in 2025.
+    if CLAY.search(event) or (re.search(r"stuttgart|porsche", event, re.I) and day.month == 4)             or (re.search(r"auvergne|lyon", event, re.I) and day.month == 5) or (event == "Olympics" and day.year == 2024):
+        return "clay"
+    return "hard"
 
 
 def _day(d: date, today: date) -> dict:
@@ -45,6 +71,12 @@ def _day(d: date, today: date) -> dict:
     return {}
 
 
+def _country(athlete: dict) -> str:
+    """Three-letter code from the flag's file name: ".../countries/500/bul.png" -> "BUL"."""
+    m = re.search(r"/([a-z]{3})\.png", athlete.get("flag", {}).get("href", ""))
+    return m.group(1).upper() if m else ""
+
+
 def _match(c: dict, tour: str, event: str) -> dict | None:
     status = c.get("status", {}).get("type", {}).get("name", "")
     if status not in ("STATUS_FINAL", "STATUS_RETIRED"):
@@ -57,16 +89,20 @@ def _match(c: dict, tour: str, event: str) -> dict | None:
         return None
     sets = [[int(ls.get("value", 0)) for ls in s.get("linescores", [])] for s in sides]
     won = [sum(a > b for a, b in zip(sets[k], sets[1 - k])) for k in (0, 1)]
+    day = pd.Timestamp(c["date"][:10])
     return {
         "id": str(c["id"]),
-        "date": pd.Timestamp(c["date"][:10]),
+        "date": day,
         "tour": tour,
         "event": event,
+        "surface": surface(event, day),
         "round": c.get("round", {}).get("displayName", ""),
         "p1": sides[0]["athlete"].get("displayName", ""),
         "p2": sides[1]["athlete"].get("displayName", ""),
         "p1_id": str(sides[0].get("id") or sides[0]["athlete"].get("id")),
         "p2_id": str(sides[1].get("id") or sides[1]["athlete"].get("id")),
+        "p1_country": _country(sides[0]["athlete"]),
+        "p2_country": _country(sides[1]["athlete"]),
         "winner": 1 if w[0] else 2,
         "sets": " ".join(f"{a}-{b}" for a, b in zip(*sets)),
         # Three sets won only happens in best-of-five.

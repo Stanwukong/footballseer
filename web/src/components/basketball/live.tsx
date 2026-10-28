@@ -13,7 +13,17 @@ import { formatDay, pct } from "@/lib/format";
 import { useBasketballDetail, useBasketballFeed } from "@/lib/live-client";
 
 /** Clock or state, red while in play. */
-export function GameStatus({ e, className = "" }: { e: LiveEvent; className?: string }) {
+/** `stacked` splits the status over two lines ("Q2" over "01:43", "End" over "Q1"), for the narrow status column on the matches board. */
+export function GameStatus({ e, className = "", stacked = false }: { e: LiveEvent; className?: string; stacked?: boolean }) {
+  const [period, clock] = e.status.split(/\s+(?=\S+$)/);
+  if (e.state === "in" && stacked && clock) {
+    return (
+      <span className={cx("flex flex-col items-center font-mono text-[11px] leading-tight font-semibold text-bad tabular", className)}>
+        <span className="inline-flex items-center gap-1 whitespace-nowrap"><LiveDot />{period}</span>
+        <span>{clock}</span>
+      </span>
+    );
+  }
   if (e.state === "in") {
     return (
       <span className={cx("inline-flex items-center gap-1.5 font-mono text-[11px] font-semibold whitespace-nowrap text-bad tabular", className)}>

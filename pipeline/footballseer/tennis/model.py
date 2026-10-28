@@ -20,6 +20,7 @@ import numpy as np
 from scipy.optimize import brentq
 
 START = 1500.0
+PEAK_AFTER = 20   # a peak counts once a player's rating has settled
 
 
 def k_factor(n: int) -> float:
@@ -71,6 +72,8 @@ class Player:
     n: int = 0
     last: str = ""
     form: str = ""
+    peak: float = START
+    peak_day: str = ""
 
 
 @dataclass
@@ -95,15 +98,23 @@ class Ratings:
         w.last = l.last = day
         w.form = ("W" + w.form)[:5]
         l.form = ("L" + l.form)[:5]
+        if w.n >= PEAK_AFTER and w.elo > w.peak:
+            w.peak, w.peak_day = w.elo, day
 
 
-def walk(matches, min_prior: int = 10) -> tuple[Ratings, np.ndarray]:
-    """Rate matches in order. Returns the final ratings and, per match, p1's
-    pre-match Elo lead (NaN when either player had fewer than min_prior matches)."""
+def walk(matches, min_prior: int = 10) -> tuple[Ratings, np.ndarray, np.ndarray]:
+    """Rate matches in order. Returns the final ratings; per match, p1's
+    pre-match Elo lead (NaN when either player had fewer than min_prior matches);
+    and both players' pre-match Elos, shape (n, 2)."""
     r = Ratings()
     pre = np.full(len(matches), np.nan)
+    elos = np.full((len(matches), 2), START)
     for i, m in enumerate(matches.itertuples(index=False)):
         a, b = r.players.get(m.p1_id), r.players.get(m.p2_id)
+        if a:
+            elos[i, 0] = a.elo
+        if b:
+            elos[i, 1] = b.elo
         if a and b and a.n >= min_prior and b.n >= min_prior:
             pre[i] = a.elo - b.elo
         day = f"{m.date:%Y-%m-%d}"
@@ -111,4 +122,4 @@ def walk(matches, min_prior: int = 10) -> tuple[Ratings, np.ndarray]:
             r.update(m.p1_id, m.p2_id, m.p1, m.p2, day)
         else:
             r.update(m.p2_id, m.p1_id, m.p2, m.p1, day)
-    return r, pre
+    return r, pre, elos

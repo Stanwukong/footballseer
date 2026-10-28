@@ -1,6 +1,6 @@
 export type NavIcon =
   | "live" | "matches" | "value" | "daily" | "previews" | "filters" | "machine" | "scanner" | "trends"
-  | "teamStats" | "leagueStats" | "predictor" | "leagues" | "favourites" | "record" | "lookback" | "ratings";
+  | "teamStats" | "leagueStats" | "predictor" | "leagues" | "favourites" | "record" | "lookback" | "ratings" | "code";
 
 export type Sport = "football" | "basketball" | "tennis";
 
@@ -30,6 +30,7 @@ export const NAV: { title: string; items: NavItem[] }[] = [
   {
     title: "Tools",
     items: [
+      { href: "/booking-code", label: "Booking code", icon: "code", sports: ["football", "basketball", "tennis"] },
       { href: "/filters", label: "Advanced filters", icon: "filters" },
       { href: "/generator", label: "Bet generator", icon: "machine" },
       { href: "/scanner", label: "Pre-match scanner", icon: "scanner" },

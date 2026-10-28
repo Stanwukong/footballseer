@@ -2,7 +2,7 @@
 
 import {
   BadgePercent, CalendarClock, CalendarDays, ChartColumn, Check, ChevronsUpDown, Dices, Flame, History, LayoutGrid, ListOrdered,
-  Menu, Newspaper, Radar, Radio, Search, SlidersHorizontal, Star, Swords, Trophy, Users, X, type LucideIcon,
+  Menu, Newspaper, Radar, Radio, Search, SlidersHorizontal, Star, Swords, Ticket, Trophy, Users, X, type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -20,7 +20,7 @@ import { navFor, SPORTS, sportHref, sportOf, type NavIcon, type Sport } from "@/
 const ICONS: Record<NavIcon, LucideIcon> = {
   live: Radio, matches: LayoutGrid, value: BadgePercent, daily: CalendarDays, previews: Newspaper, favourites: Star,
   filters: SlidersHorizontal, machine: Dices, scanner: Radar, trends: Flame, teamStats: Users,
-  leagueStats: ChartColumn, predictor: Swords, leagues: Trophy, record: History, lookback: CalendarClock, ratings: ListOrdered,
+  leagueStats: ChartColumn, predictor: Swords, leagues: Trophy, record: History, lookback: CalendarClock, ratings: ListOrdered, code: Ticket,
 };
 
 function Brand({ sport }: { sport: Sport }) {

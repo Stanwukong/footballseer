@@ -4,7 +4,9 @@
 
 Upcoming matches aren't predicted here. The web app reads them live from
 SportyBet and prices each one from these ratings, so writes go only to
-web/public/data/tennis/: ratings.json and backtest.json.
+web/public/data/tennis/: ratings.json, backtest.json, players.json (each
+listed player's stats, see stats.py) and matches.json (every result with both
+players' pre-match Elos, for recent matches, head-to-heads and rating history).
 """
 
 from __future__ import annotations
@@ -18,7 +20,7 @@ import pandas as pd
 
 from ..basketball.pipeline import ROOT
 from ..sources import today_utc
-from . import model, sources
+from . import model, sources, stats
 
 log = logging.getLogger(__name__)
 
@@ -76,9 +78,11 @@ def backtest_json(df: pd.DataFrame, gap: np.ndarray, scale: float, today: date) 
 
 def ratings_json(r: model.Ratings, df: pd.DataFrame, today: date) -> list[dict]:
     tour_of = {**dict(zip(df["p1_id"], df["tour"])), **dict(zip(df["p2_id"], df["tour"]))}
+    country = {**dict(zip(df["p1_id"], df["p1_country"])), **dict(zip(df["p2_id"], df["p2_country"]))}
     cutoff = f"{today - timedelta(days=ACTIVE_DAYS):%Y-%m-%d}"
     rows = [
-        {"id": pid, "name": p.name, "tour": tour_of[pid], "elo": round(p.elo, 1), "n": p.n, "last": p.last, "form": p.form}
+        {"id": pid, "name": p.name, "tour": tour_of[pid], "country": country.get(pid, ""), "elo": round(p.elo, 1), "n": p.n,
+         "last": p.last, "form": p.form, "peak": round(p.peak, 1) if p.peak_day else None, "peak_day": p.peak_day or None}
         for pid, p in r.players.items()
         if p.n >= MIN_MATCHES and p.last >= cutoff
     ]
@@ -89,17 +93,35 @@ def ratings_json(r: model.Ratings, df: pd.DataFrame, today: date) -> list[dict]:
     return rows
 
 
+def matches_json(df: pd.DataFrame, elos: np.ndarray, r: model.Ratings) -> dict:
+    """Every result, compactly: tournaments and rounds as indexes into their own lists.
+    Each row is [date, event, round, p1_id, p2_id, winner, sets, best_of, retired, p1_elo, p2_elo] with pre-match Elos."""
+    events = list(dict.fromkeys(zip(df["event"], df["surface"])))
+    rounds = list(dict.fromkeys(df["round"]))
+    ev, rd = {e: k for k, e in enumerate(events)}, {x: k for k, x in enumerate(rounds)}
+    rows = [
+        [f"{m.date:%Y-%m-%d}", ev[(m.event, m.surface)], rd[m.round], m.p1_id, m.p2_id, int(m.winner), m.sets, int(m.best_of),
+         int(m.status == "retired"), round(float(e[0]), 1), round(float(e[1]), 1)]
+        for m, e in zip(df.itertuples(index=False), elos)
+    ]
+    return {"events": [list(e) for e in events], "rounds": rounds, "names": {pid: p.name for pid, p in r.players.items()}, "rows": rows}
+
+
 def run(today: date | None = None) -> None:
     today = today or today_utc()
     df = sources.load_matches(today, today - timedelta(days=HISTORY_DAYS))
     if df.empty:
         raise RuntimeError("no tennis results downloaded")
-    r, gap = model.walk(df)
+    r, gap, elos = model.walk(df)
     scale = calibrate(df, gap, today)
     players = ratings_json(r, df, today)
     bt = backtest_json(df, gap, scale, today)
+    rank = {p["id"]: p["rank"] for p in players}
+    profile = stats.player_stats(df, elos, scale, rank, set(rank), today)
     _write("ratings.json", {"as_of": f"{today:%Y-%m-%d}", "matches": len(df), "from": f"{df['date'].min():%Y-%m-%d}", "scale": scale, "players": players})
     _write("backtest.json", bt)
+    _write("players.json", {"as_of": f"{today:%Y-%m-%d}", "players": profile})
+    _write("matches.json", matches_json(df, elos, r))
     if bt["overall"]:
         o = bt["overall"]
         log.info("tennis backtest: %d matches, scale %.2f, accuracy %.1f%%, log loss %.3f", o["n"], scale, 100 * o["accuracy"], o["logloss"])

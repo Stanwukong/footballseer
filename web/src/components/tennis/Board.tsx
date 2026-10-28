@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useMemo, useState } from "react";
 
@@ -184,7 +185,7 @@ function TennisCard({ m, showEvent }: { m: TennisMatch; showEvent: boolean }) {
                 {m.serving === side && <span className="size-1.5 rounded-full bg-accent" aria-label="Serving" />}
               </span>
               <span className={cx("min-w-0 flex-1 truncate", m.winner != null && !won ? "text-ink-3" : "font-medium")}>
-                {m.players[side]}
+                {m.model ? <Link href={`/tennis/players/${m.model.ids[side]}`} className="hover:text-accent-text hover:underline">{m.players[side]}</Link> : m.players[side]}
                 {m.model && <span className="ml-1.5 font-mono text-[10px] text-ink-3 tabular">#{m.model.rank[side]}</span>}
               </span>
               {m.state !== "pre" && (
