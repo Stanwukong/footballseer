@@ -298,7 +298,7 @@ function GameRow({ r, today, showLeague, league }: { r: Row; today: string; show
         <div className="flex w-12 shrink-0 flex-col items-center sm:w-14">
           {!r.past && <StarButton id={r.id} label={`${r.away} at ${r.home}`} />}
           {live && !r.past ? (
-            <GameStatus e={live} className="-mt-1" />
+            <GameStatus e={live} className="-mt-1" stacked />
           ) : (
             <span className={cx("font-mono text-[11px] tabular", r.past ? "text-ink-2" : "-mt-1 text-ink-3")} title={r.past && !r.score ? "Awaiting result" : undefined}>
               {r.past ? (r.score ? "Final" : (r.time ?? "–")) : r.date === today || !r.date ? (r.time ?? "–") : shortDate(r.date)}
