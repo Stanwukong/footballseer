@@ -60,6 +60,10 @@ jobs:
       - run: python -m footballseer basketball run
         continue-on-error: true
 
+      # Tennis ratings, same deal. The first run downloads three years of ESPN scoreboards (~20 min); the cache keeps them after that.
+      - run: python -m footballseer tennis run
+        continue-on-error: true
+
       - name: Commit data
         working-directory: .
         run: |

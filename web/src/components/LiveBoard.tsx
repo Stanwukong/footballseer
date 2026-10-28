@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
-import { LiveStatus, StatBars } from "@/components/live";
+import { ElsewhereList, LiveStatus, MarketLine, StatBars } from "@/components/live";
 import { Segmented } from "@/components/TeamTables";
 import { CountryTag, cx, EmptyState, ProbPill, ResultMark } from "@/components/ui";
 import { inPlay } from "@/lib/inplay";
@@ -65,6 +65,7 @@ export function LiveBoard({ fixtures, leagues }: { fixtures: Linked[]; leagues: 
           ))}
         </div>
       )}
+      {view === "in" && <ElsewhereList items={feed.elsewhere} />}
     </div>
   );
 }
@@ -95,6 +96,7 @@ function LiveCard({ e, f, league }: { e: LiveEvent; f?: Linked; league?: LeagueI
           {e.incidents.filter((i) => i.kind !== "yellow").map((i) => `${i.kind === "red" ? "🟥" : "⚽"} ${i.player ?? ""} ${i.minute}`).join("   ")}
         </p>
       )}
+      {e.state === "in" && <MarketLine market={e.market} className="px-4 pt-1.5" />}
       {e.stats && <div className="px-4 pt-3"><StatBars s={{ home: { possession: e.stats.home.possession, shots: e.stats.home.shots, onTarget: e.stats.home.onTarget }, away: { possession: e.stats.away.possession, shots: e.stats.away.shots, onTarget: e.stats.away.onTarget } }} /></div>}
       {tip && f && (
         <div className="mt-3 flex items-center justify-between gap-3 border-t border-line bg-surface-2/50 px-4 py-2.5 text-sm">

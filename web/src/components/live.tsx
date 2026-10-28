@@ -9,7 +9,7 @@ import { inPlay } from "@/lib/inplay";
 import { formatDay, marketName, pct, topTip } from "@/lib/format";
 import { useLiveDetail, useLiveFeed } from "@/lib/live-client";
 import { settle } from "@/lib/settle";
-import type { Fixture, LiveEvent, LiveIncident, LiveTeamStats } from "@/lib/types";
+import type { ElsewhereEvent, Fixture, LiveEvent, LiveIncident, LiveTeamStats } from "@/lib/types";
 
 /** Red pulsing dot, the universal "live" mark. */
 export function LiveDot({ className = "" }: { className?: string }) {
@@ -18,6 +18,52 @@ export function LiveDot({ className = "" }: { className?: string }) {
       <span className="absolute inline-flex size-full animate-ping rounded-full bg-bad opacity-60" />
       <span className="relative inline-flex size-2 rounded-full bg-bad" />
     </span>
+  );
+}
+
+/** SportyBet's in-play chances, margin removed: "Market 1 54% · X 26% · 2 20%". */
+export function MarketLine({ market, className = "" }: { market?: number[] | null; className?: string }) {
+  if (!market?.length) return null;
+  const labels = market.length === 3 ? ["1", "X", "2"] : ["1", "2"];
+  return (
+    <p className={cx("flex items-center gap-2 font-mono text-[11px] text-ink-3 tabular", className)} title="SportyBet's in-play prices as chances, margin removed">
+      <span className="tracking-wider uppercase">Market</span>
+      {market.map((p, i) => <span key={i}><span className="text-ink-3">{labels[i]}</span> <span className="text-ink-2">{pct(p)}</span></span>)}
+    </p>
+  );
+}
+
+const ELSEWHERE_SHOWN = 12;
+
+/** Games in play that SportyBet lists and our scoreboards don't: scores and the market, no model. */
+export function ElsewhereList({ items }: { items?: ElsewhereEvent[] }) {
+  const [all, setAll] = useState(false);
+  if (!items?.length) return null;
+  const shown = all ? items : items.slice(0, ELSEWHERE_SHOWN);
+  return (
+    <section className="space-y-2 pt-2">
+      <h2 className="eyebrow px-1">Elsewhere in play · {items.length} <span className="normal-case">from SportyBet, no predictions</span></h2>
+      <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface shadow-card">
+        {shown.map((e) => (
+          <li key={e.id} className="grid grid-cols-[3rem_1fr_auto] items-center gap-x-3 px-4 py-2 text-sm">
+            <span className="font-mono text-[11px] font-semibold text-bad tabular">{e.status}</span>
+            <span className="min-w-0">
+              <span className="block truncate">{e.home} <span className="text-ink-3">v</span> {e.away}</span>
+              <span className="block truncate text-xs text-ink-3">{e.competition}</span>
+            </span>
+            <span className="text-right">
+              <span className="block font-display font-semibold tabular">{e.score ? `${e.score[0]}–${e.score[1]}` : "–"}</span>
+              {e.market && <span className="block font-mono text-[10px] text-ink-3 tabular">{e.market.map((p) => pct(p)).join(" ")}</span>}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {items.length > ELSEWHERE_SHOWN && (
+        <button type="button" onClick={() => setAll(!all)} className="w-full rounded-lg border border-line bg-surface py-2 text-sm text-ink-2 hover:border-line-strong">
+          {all ? "Show fewer" : `Show all ${items.length}`}
+        </button>
+      )}
+    </section>
   );
 }
 

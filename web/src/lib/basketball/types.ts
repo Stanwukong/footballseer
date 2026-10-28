@@ -1,6 +1,6 @@
 // Shapes of the JSON written by pipeline/footballseer/basketball/pipeline.py.
 
-import type { LiveState } from "../types";
+import type { ElsewhereEvent, LiveState } from "../types";
 
 export type Probs = Record<string, number>;
 
@@ -263,12 +263,15 @@ export interface LiveEvent {
   /** Top scorer so far: [name, points] per side. */
   leaders: [[string, number] | null, [string, number] | null];
   stats: { home: Record<string, number>; away: Record<string, number> } | null;
+  /** SportyBet's fair chances in play: home, away (overtime included). */
+  market?: number[] | null;
 }
 
 export interface LiveFeed {
   updated: string;
   source: string;
   events: LiveEvent[];
+  elsewhere?: ElsewhereEvent[];
 }
 
 export interface LiveDetail {

@@ -243,12 +243,27 @@ export interface LiveEvent {
   red: [number, number];
   stats: { home: LiveTeamStats; away: LiveTeamStats } | null;
   incidents: LiveIncident[];
+  /** SportyBet's fair chances in play: home, draw, away. */
+  market?: number[] | null;
+}
+
+/** A game in play that SportyBet lists and our scoreboards don't. */
+export interface ElsewhereEvent {
+  id: string;
+  competition: string;
+  /** "74'", "HT", "Q3". */
+  status: string;
+  home: string;
+  away: string;
+  score: [number, number] | null;
+  market: number[] | null;
 }
 
 export interface LiveFeed {
   updated: string;
   source: string;
   events: LiveEvent[];
+  elsewhere?: ElsewhereEvent[];
 }
 
 export interface LineupPlayer {

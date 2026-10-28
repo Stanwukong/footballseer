@@ -1,19 +1,25 @@
 export type NavIcon =
   | "live" | "matches" | "value" | "daily" | "previews" | "filters" | "machine" | "scanner" | "trends"
-  | "teamStats" | "leagueStats" | "predictor" | "leagues" | "favourites" | "record" | "lookback";
+  | "teamStats" | "leagueStats" | "predictor" | "leagues" | "favourites" | "record" | "lookback" | "ratings";
+
+export type Sport = "football" | "basketball" | "tennis";
 
 export interface NavItem {
   href: string;
   label: string;
   icon: NavIcon;
+  /** Sports that have this page; all but tennis when left out. */
+  sports?: Sport[];
 }
+
+const TENNIS: Sport[] = ["tennis"];
 
 export const NAV: { title: string; items: NavItem[] }[] = [
   {
     title: "Predictions",
     items: [
-      { href: "/", label: "Matches", icon: "matches" },
-      { href: "/live", label: "Live scores", icon: "live" },
+      { href: "/", label: "Matches", icon: "matches", sports: ["football", "basketball", "tennis"] },
+      { href: "/live", label: "Live scores", icon: "live", sports: ["football", "basketball", "tennis"] },
       { href: "/lookback", label: "Lookback", icon: "lookback" },
       { href: "/value", label: "Value bets", icon: "value" },
       { href: "/daily", label: "Daily bets", icon: "daily" },
@@ -37,21 +43,27 @@ export const NAV: { title: string; items: NavItem[] }[] = [
     title: "Explore",
     items: [
       { href: "/leagues", label: "Leagues", icon: "leagues" },
-      { href: "/track-record", label: "Track record", icon: "record" },
+      { href: "/ratings", label: "Player ratings", icon: "ratings", sports: TENNIS },
+      { href: "/track-record", label: "Track record", icon: "record", sports: ["football", "basketball", "tennis"] },
     ],
   },
 ];
 
-export type Sport = "football" | "basketball";
+/** The nav for one sport: sections with none of its pages are left out. */
+export const navFor = (sport: Sport) =>
+  NAV.map((s) => ({ ...s, items: s.items.filter((i) => (i.sports ?? ["football", "basketball"]).includes(sport)) })).filter((s) => s.items.length);
 
-export const SPORTS: { id: Sport; label: string }[] = [
-  { id: "football", label: "Football" },
-  { id: "basketball", label: "Basketball" },
+export const SPORTS: { id: Sport; label: string; prefix: string; blurb: string }[] = [
+  { id: "football", label: "Football", prefix: "", blurb: "38 leagues · goals model" },
+  { id: "basketball", label: "Basketball", prefix: "/basketball", blurb: "NBA, EuroLeague and more" },
+  { id: "tennis", label: "Tennis", prefix: "/tennis", blurb: "ATP and WTA · Elo ratings" },
 ];
 
-/** Basketball lives under /basketball with the same page names as football. */
+/** Basketball and tennis live under their own prefix with the same page names as football. */
 export const sportOf = (pathname: string): Sport =>
-  pathname === "/basketball" || pathname.startsWith("/basketball/") ? "basketball" : "football";
+  SPORTS.find((s) => s.prefix && (pathname === s.prefix || pathname.startsWith(`${s.prefix}/`)))?.id ?? "football";
 
-export const sportHref = (sport: Sport, href: string) =>
-  sport === "football" ? href : href === "/" ? "/basketball" : `/basketball${href}`;
+export const sportHref = (sport: Sport, href: string) => {
+  const prefix = SPORTS.find((s) => s.id === sport)!.prefix;
+  return !prefix ? href : href === "/" ? prefix : `${prefix}${href}`;
+};

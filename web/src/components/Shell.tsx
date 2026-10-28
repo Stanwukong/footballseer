@@ -1,24 +1,26 @@
 "use client";
 
 import {
-  BadgePercent, CalendarClock, CalendarDays, ChartColumn, Dices, Flame, History, LayoutGrid, Menu, Newspaper,
-  Radar, Radio, Search, SlidersHorizontal, Star, Swords, Trophy, Users, X, type LucideIcon,
+  BadgePercent, CalendarClock, CalendarDays, ChartColumn, Check, ChevronsUpDown, Dices, Flame, History, LayoutGrid, ListOrdered,
+  Menu, Newspaper, Radar, Radio, Search, SlidersHorizontal, Star, Swords, Trophy, Users, X, type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 import { OddsSwitch, ThemeSwitch } from "@/components/client";
 import { LogoMark } from "@/components/Logo";
+import { SportIcon } from "@/components/SportIcon";
 import { Tour } from "@/components/Tour";
 import { cx } from "@/components/ui";
-import { useBasketballFeed, useLiveFeed } from "@/lib/live-client";
-import { NAV, SPORTS, sportHref, sportOf, type NavIcon, type Sport } from "@/lib/nav";
+import { useBasketballFeed, useLiveFeed, useTennisFeed } from "@/lib/live-client";
+import { navFor, SPORTS, sportHref, sportOf, type NavIcon, type Sport } from "@/lib/nav";
 
 const ICONS: Record<NavIcon, LucideIcon> = {
   live: Radio, matches: LayoutGrid, value: BadgePercent, daily: CalendarDays, previews: Newspaper, favourites: Star,
   filters: SlidersHorizontal, machine: Dices, scanner: Radar, trends: Flame, teamStats: Users,
-  leagueStats: ChartColumn, predictor: Swords, leagues: Trophy, record: History, lookback: CalendarClock,
+  leagueStats: ChartColumn, predictor: Swords, leagues: Trophy, record: History, lookback: CalendarClock, ratings: ListOrdered,
 };
 
 function Brand({ sport }: { sport: Sport }) {
@@ -26,7 +28,7 @@ function Brand({ sport }: { sport: Sport }) {
     <Link href={sportHref(sport, "/")} className="flex shrink-0 items-center gap-2.5">
       <LogoMark className="size-7" />
       <span className="font-display text-[17px] font-semibold tracking-tight">
-        {sport === "basketball" ? "Basketball" : "Football"}<span className="text-accent-text">Seer</span>
+        {SPORTS.find((s) => s.id === sport)!.label}<span className="text-accent-text">Seer</span>
       </span>
     </Link>
   );
@@ -50,24 +52,127 @@ function BasketballLive() {
   return <LiveBadge count={useBasketballFeed().liveCount} />;
 }
 
-function SportSwitch({ sport, onNavigate }: { sport: Sport; onNavigate?: () => void }) {
+function TennisLive() {
+  return <LiveBadge count={useTennisFeed().liveCount} />;
+}
+
+const LIVE_BADGE: Record<Sport, () => ReactNode> = { football: FootballLive, basketball: BasketballLive, tennis: TennisLive };
+
+/**
+ * The sport picker: a button that opens a short list. On large screens the list
+ * drops down under the button; on phones and tablets it's a dialog in the middle
+ * of the screen. It renders into <body>, because the mobile drawer's slide
+ * transform would otherwise pin a fixed dialog to the drawer, not the screen.
+ */
+function SportPicker({ sport, onNavigate }: { sport: Sport; onNavigate?: () => void }) {
+  const [anchor, setAnchor] = useState<DOMRect | null>(null);
+  const button = useRef<HTMLButtonElement>(null);
+  const current = SPORTS.find((s) => s.id === sport)!;
+  const close = useCallback((refocus = true) => {
+    setAnchor(null);
+    if (refocus) button.current?.focus();
+  }, []);
   return (
-    <div role="tablist" aria-label="Sport" data-tour="sport" className="mx-1 grid grid-cols-2 rounded-lg border border-line bg-surface-2 p-0.5">
-      {SPORTS.map((s) => (
-        <Link
-          key={s.id}
-          href={sportHref(s.id, "/")}
-          role="tab"
-          aria-selected={sport === s.id}
-          onClick={onNavigate}
-          className={cx(
-            "inline-flex h-8 items-center justify-center rounded-md text-[13px] font-medium transition-colors",
-            sport === s.id ? "bg-surface text-ink shadow-card" : "text-ink-3 hover:text-ink",
-          )}
-        >
-          {s.label}
-        </Link>
-      ))}
+    <>
+      <button
+        ref={button}
+        type="button"
+        data-tour="sport"
+        aria-haspopup="dialog"
+        aria-expanded={!!anchor}
+        onClick={() => setAnchor(button.current!.getBoundingClientRect())}
+        className="mx-1 flex h-12 items-center gap-3 rounded-lg border border-line bg-surface-2 px-3 text-left transition-colors hover:border-line-strong"
+      >
+        <SportIcon sport={sport} className="size-5 shrink-0 text-accent-text" />
+        <span className="min-w-0 flex-1">
+          <span className="block font-mono text-[10px] tracking-wider text-ink-3 uppercase">Sport</span>
+          <span className="block truncate text-sm font-medium">{current.label}</span>
+        </span>
+        <ChevronsUpDown size={15} className="shrink-0 text-ink-3" />
+      </button>
+      {anchor && createPortal(<SportDialog sport={sport} anchor={anchor} onClose={close} onNavigate={onNavigate} />, document.body)}
+    </>
+  );
+}
+
+function SportDialog({ sport, anchor, onClose, onNavigate }: { sport: Sport; anchor: DOMRect; onClose: (refocus?: boolean) => void; onNavigate?: () => void }) {
+  const panel = useRef<HTMLDivElement>(null);
+  const title = useId();
+
+  useEffect(() => {
+    panel.current?.querySelector<HTMLElement>("[aria-current]")?.focus();
+    // The desktop list is pinned to where the button was; a resize would leave it behind.
+    const onResize = () => onClose(false);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [onClose]);
+
+  const onKeyDown = (e: ReactKeyboardEvent) => {
+    // Stop here so the mobile drawer underneath doesn't close too.
+    if (e.key === "Escape") {
+      e.stopPropagation();
+      onClose();
+      return;
+    }
+    // Arrows and Tab cycle through the options; focus stays in the dialog.
+    const items = [...(panel.current?.querySelectorAll<HTMLElement>("a, button") ?? [])];
+    const at = items.indexOf(document.activeElement as HTMLElement);
+    const step = e.key === "ArrowDown" ? 1 : e.key === "ArrowUp" ? -1 : e.key === "Tab" ? (e.shiftKey ? -1 : 1) : 0;
+    if (!step || !items.length) return;
+    e.preventDefault();
+    items[(at + step + items.length) % items.length].focus();
+  };
+
+  const place = { "--x": `${anchor.left}px`, "--y": `${anchor.bottom + 6}px`, "--w": `${anchor.width}px` } as CSSProperties;
+  return (
+    <div className="fixed inset-0 z-50" onKeyDown={onKeyDown}>
+      <div className="absolute inset-0 bg-black/40 lg:bg-transparent" onClick={() => onClose()} />
+      <div
+        ref={panel}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={title}
+        style={place}
+        className={cx(
+          "absolute top-1/2 left-1/2 w-[min(22rem,calc(100vw-2rem))] -translate-1/2 rounded-2xl border border-line bg-surface p-2 shadow-raised",
+          "lg:top-(--y) lg:left-(--x) lg:w-max lg:min-w-(--w) lg:translate-0 lg:rounded-xl lg:p-1",
+        )}
+      >
+        <div className="flex items-center justify-between px-3 pt-1.5 pb-2 lg:sr-only">
+          <h2 id={title} className="font-display text-[15px] font-semibold tracking-tight">Choose a sport</h2>
+          <button type="button" onClick={() => onClose()} className="-mr-1.5 inline-flex size-8 items-center justify-center rounded-lg text-ink-2 hover:bg-surface-2" aria-label="Close">
+            <X size={18} />
+          </button>
+        </div>
+        <ul className="flex flex-col gap-px">
+          {SPORTS.map((s) => {
+            const on = s.id === sport;
+            return (
+              <li key={s.id}>
+                <Link
+                  href={sportHref(s.id, "/")}
+                  aria-current={on ? "page" : undefined}
+                  onClick={() => {
+                    onClose(false);
+                    onNavigate?.();
+                  }}
+                  className={cx(
+                    "flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors focus-visible:outline-2 focus-visible:outline-accent lg:py-2",
+                    on ? "bg-surface-3" : "hover:bg-surface-2",
+                  )}
+                >
+                  <SportIcon sport={s.id} className={cx("size-5 shrink-0", on ? "text-accent-text" : "text-ink-3")} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium">{s.label}</span>
+                    <span className="block truncate text-xs text-ink-3">{s.blurb}</span>
+                  </span>
+                  {on && <Check size={16} className="shrink-0 text-accent-text" />}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
     </div>
   );
 }
@@ -79,13 +184,14 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
   const active = (href: string) => (href === home ? pathname === home : pathname === href || pathname.startsWith(`${href}/`));
   return (
     <nav aria-label="Primary" className="flex flex-col gap-5">
-      <SportSwitch sport={sport} onNavigate={onNavigate} />
-      {NAV.map((s) => (
+      <SportPicker sport={sport} onNavigate={onNavigate} />
+      {navFor(sport).map((s) => (
         <div key={s.title}>
           <p className="eyebrow px-3 pb-1.5">{s.title}</p>
           <ul className="flex flex-col gap-px">
             {s.items.map((i) => {
               const Icon = ICONS[i.icon];
+              const Live = LIVE_BADGE[sport];
               const href = sportHref(sport, i.href);
               const on = active(href);
               return (
@@ -102,7 +208,7 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
                   >
                     <Icon size={16} strokeWidth={1.75} className={on ? "text-accent-text" : "text-ink-3"} />
                     {i.label}
-                    {i.icon === "live" && (sport === "basketball" ? <BasketballLive /> : <FootballLive />)}
+                    {i.icon === "live" && <Live />}
                   </Link>
                 </li>
               );

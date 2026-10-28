@@ -24,7 +24,7 @@ const SPORT = {
 };
 
 /** Streaks for teams playing in the next few days, longest first or grouped by match. */
-export function TrendsBoard({ items, leagues, today: asOf, sport = "football" }: { items: TrendItem[]; leagues: Pick<LeagueInfo, "code" | "country" | "name" | "tier">[]; today: string; sport?: Sport }) {
+export function TrendsBoard({ items, leagues, today: asOf, sport = "football" }: { items: TrendItem[]; leagues: Pick<LeagueInfo, "code" | "country" | "name" | "tier">[]; today: string; sport?: Exclude<Sport, "tennis"> }) {
   const today = useToday(asOf);
   const cfg = SPORT[sport];
   const [events, setEvents] = useState<string[]>([]);
