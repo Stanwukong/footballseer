@@ -1,15 +1,17 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { Segmented } from "@/components/TeamTables";
 import { cx, EmptyState, input } from "@/components/ui";
-import { shortDate } from "@/lib/format";
-import type { RatedPlayer, Tour } from "@/lib/tennis/types";
+import { pct, shortDate } from "@/lib/format";
+import type { RatedPlayer, Tour, WL } from "@/lib/tennis/types";
 
 const PAGE = 100;
 
-export function RatingsTable({ players }: { players: RatedPlayer[] }) {
+/** `year` is each player's record over the last 12 months, by id. */
+export function RatingsTable({ players, year }: { players: RatedPlayer[]; year: Record<string, WL> }) {
   const [tour, setTour] = useState<Tour>("ATP");
   const [q, setQ] = useState("");
   const [shown, setShown] = useState(PAGE);
@@ -34,6 +36,7 @@ export function RatingsTable({ players }: { players: RatedPlayer[] }) {
               <th className="px-2 py-2 font-medium">Player</th>
               <th className="px-2 py-2 text-right font-medium">Elo</th>
               <th className="hidden px-2 py-2 text-right font-medium sm:table-cell">Matches</th>
+              <th className="hidden px-2 py-2 text-right font-medium md:table-cell">Last 12 months</th>
               <th className="px-2 py-2 font-medium">Form</th>
               <th className="hidden px-4 py-2 text-right font-medium sm:table-cell">Last played</th>
             </tr>
@@ -42,9 +45,20 @@ export function RatingsTable({ players }: { players: RatedPlayer[] }) {
             {rows.slice(0, shown).map((p) => (
               <tr key={p.id} className="border-b border-line last:border-0 hover:bg-surface-2/50">
                 <td className="px-4 py-2 text-ink-3">{p.rank}</td>
-                <td className="max-w-48 truncate px-2 py-2 font-medium">{p.name}</td>
+                <td className="max-w-48 truncate px-2 py-2 font-medium">
+                  <Link href={`/tennis/players/${p.id}`} className="hover:text-accent-text hover:underline">{p.name}</Link>
+                  {p.country && <span className="ml-1.5 font-mono text-[10px] text-ink-3">{p.country}</span>}
+                </td>
                 <td className="px-2 py-2 text-right font-semibold">{Math.round(p.elo)}</td>
                 <td className="hidden px-2 py-2 text-right text-ink-2 sm:table-cell">{p.n}</td>
+                <td className="hidden px-2 py-2 text-right md:table-cell">
+                  {year[p.id] ? (
+                    <>
+                      <span className="font-medium">{year[p.id][0]}–{year[p.id][1]}</span>
+                      <span className="ml-1.5 text-xs text-ink-3">{pct(year[p.id][0] / Math.max(1, year[p.id][0] + year[p.id][1]))}</span>
+                    </>
+                  ) : "–"}
+                </td>
                 <td className="px-2 py-2">
                   {/* Newest result on the right, as elsewhere on the site. */}
                   <span className="inline-flex gap-0.5">

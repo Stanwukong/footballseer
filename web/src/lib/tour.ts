@@ -48,7 +48,7 @@ export function tourSteps(sport: Sport): TourStep[] {
       fallback: MENU,
       fallbackHint: "Open the menu to find it.",
       title: "Football, basketball and tennis",
-      body: "Switch sport here. Football and basketball have every page; tennis has live scores, Elo ratings and its track record.",
+      body: "Switch sport here. Football and basketball have every page; tennis has live scores, Elo ratings with player stats and its track record. The booking code checker works for all three.",
       advance: "ack",
     },
     {

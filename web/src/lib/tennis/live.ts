@@ -33,7 +33,7 @@ function tournamentName(name: string, category: string) {
     .trim();
 }
 
-const tourOf = (category: string, tournament: string): Tour => (/wta|women/i.test(`${category} ${tournament}`) ? "WTA" : "ATP");
+export const tourOf = (category: string, tournament: string): Tour => (/wta|women/i.test(`${category} ${tournament}`) ? "WTA" : "ATP");
 
 function fromSporty(e: SportyEvent): TennisMatch {
   const doubles = e.home.includes("/") || /doubles/i.test(e.tournament);
@@ -127,7 +127,8 @@ function finished(e: LsEvent): TennisMatch {
   };
 }
 
-function ratingIndex(players: RatedPlayer[]) {
+/** Finds a rated player by any spelling of their name the feeds use. */
+export function ratingIndex(players: RatedPlayer[]) {
   const by = new Map<string, RatedPlayer>();
   for (const p of players) for (const k of playerKeys(p.name)) if (!by.has(`${p.tour}|${k}`)) by.set(`${p.tour}|${k}`, p);
   return (name: string, tour: Tour) => {
@@ -180,7 +181,7 @@ export function getTennisFeed(): Promise<TennisFeed> {
         const a = find(m.players[0], tour), b = find(m.players[1], tour);
         if (!a || !b || a.id === b.id) continue;
         const p = price(a.elo - b.elo, m.bestOf, ratings.value.scale);
-        m.model = { p: [p, 1 - p], elo: [a.elo, b.elo], rank: [a.rank, b.rank] };
+        m.model = { p: [p, 1 - p], elo: [a.elo, b.elo], rank: [a.rank, b.rank], ids: [a.id, b.id] };
       }
     }
 
