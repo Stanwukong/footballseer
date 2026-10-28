@@ -78,8 +78,12 @@ function place({ box, vw, vh, ch }: Geo): CSSProperties {
   return { width, left: vw - EDGE - width, top: vh - EDGE - ch };
 }
 
+// The tour walks through prediction pages that tennis doesn't have.
+const hasTour = (pathname: string) => sportOf(pathname) !== "tennis";
+
 export function Tour() {
-  return useMounted() ? <TourRun /> : null;
+  const pathname = usePathname();
+  return useMounted() && hasTour(pathname) ? <TourRun /> : null;
 }
 
 function TourRun() {
@@ -296,6 +300,7 @@ export function TourLink({ className = "" }: { className?: string }) {
   const router = useRouter();
   const sport: Sport = sportOf(pathname);
   const [, setStored] = usePref(tourKey(sport), "");
+  if (!hasTour(pathname)) return null;
   return (
     <button
       type="button"

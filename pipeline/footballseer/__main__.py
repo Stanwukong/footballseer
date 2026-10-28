@@ -4,6 +4,7 @@ from datetime import date
 
 from . import pipeline
 from .basketball import pipeline as basketball
+from .tennis import pipeline as tennis
 
 
 def main() -> None:
@@ -19,6 +20,9 @@ def main() -> None:
     bb.add_argument("--date", type=date.fromisoformat, help="pretend today is this date")
     bb.add_argument("--start", default="2025-05-01", help="backtest start (covers the 2025 WNBA season)")
     bb.add_argument("--refit-days", type=int, default=7)
+    tn = sub.add_parser("tennis", help="rate players and export JSON for tennis")
+    tn.add_argument("job", choices=["run"])
+    tn.add_argument("--date", type=date.fromisoformat, help="pretend today is this date")
     ap.add_argument("-v", "--verbose", action="store_true")
     args = ap.parse_args()
 
@@ -28,6 +32,8 @@ def main() -> None:
         pipeline.run(args.date)
     elif args.cmd == "backtest":
         pipeline.backtest(args.start, refit_days=args.refit_days)
+    elif args.cmd == "tennis":
+        tennis.run(args.date)
     elif args.job == "run":
         basketball.run(args.date)
     else:

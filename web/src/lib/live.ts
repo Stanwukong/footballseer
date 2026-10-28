@@ -1,10 +1,13 @@
 import "server-only";
 
 import { getFixtures } from "./data";
+import { liveScoreStats } from "./livescore";
+import { getSportyLive, mergeSporty } from "./sportybet";
 import type { LiveDetail, LiveEvent, LiveFeed, LiveIncident, LiveState, LiveTeamStats, LineupPlayer } from "./types";
 
 /*
- * Live scores from ESPN's public site API (no key). SofaScore was the first
+ * Live scores from ESPN's public site API (no key), with SportyBet's in-play
+ * market on top (lib/sportybet.ts). SofaScore was the first
  * choice, but it refuses non-browser clients; ESPN serves the same essentials:
  * state, minute, score, goals and cards, team stats, line-ups and commentary.
  *
@@ -183,6 +186,7 @@ export function getLiveFeed(): Promise<LiveFeed> {
     const jobs = near.size
       ? [...near].flatMap(([slug, dates]) => [...dates].map((d) => ({ slug, d })))
       : Object.keys(SLUG_TO_CODE).flatMap((slug) => feedDates(now).map((d) => ({ slug, d })));
+    const sporty = getSportyLive("football").catch(() => []);
     const pages = await Promise.allSettled(jobs.map((j) => getJson(`${BASE}/${j.slug}/scoreboard?dates=${j.d}`).then((data) => ({ ...j, data }))));
     const seen = new Set<string>();
     const events: LiveEvent[] = [];
@@ -199,7 +203,8 @@ export function getLiveFeed(): Promise<LiveFeed> {
     const rank: Record<LiveState, number> = { in: 0, post: 1, pre: 2 };
     events.sort((a, b) => rank[a.state] - rank[b.state] || a.kickoff.localeCompare(b.kickoff));
     if (pages.every((p) => p.status === "rejected")) throw new Error("ESPN unreachable");
-    return { updated: new Date().toISOString(), source: "ESPN", events };
+    const elsewhere = mergeSporty(events, await sporty);
+    return { updated: new Date().toISOString(), source: "ESPN · SportyBet", events, elsewhere };
   });
 }
 
@@ -247,7 +252,7 @@ export function getLiveDetail(slug: string, eventId: string): Promise<LiveDetail
       return Object.fromEntries((t?.statistics ?? []).map((s: any) => [s.name, s.displayValue as string]));
     };
     const hs = bySide("home"), as = bySide("away");
-    const stats: [string, string, string][] = STAT_LABELS.filter(([k]) => hs[k] != null || as[k] != null).map(([k, label]) => [label, hs[k] ?? "–", as[k] ?? "–"]);
+    let stats: [string, string, string][] = STAT_LABELS.filter(([k]) => hs[k] != null || as[k] != null).map(([k, label]) => [label, hs[k] ?? "–", as[k] ?? "–"]);
 
     // Goals and cards from the timeline fill in what the header lacks.
     ev.incidents = timeline.filter((i) => ["goal", "own-goal", "penalty", "red", "yellow"].includes(i.kind));
@@ -256,6 +261,13 @@ export function getLiveDetail(slug: string, eventId: string): Promise<LiveDetail
     if (stats.length) {
       const pick = (s: Record<string, string>): LiveTeamStats => ({ possession: num(s.possessionPct), shots: num(s.totalShots), onTarget: num(s.shotsOnTarget), corners: num(s.wonCorners), fouls: num(s.foulsCommitted) });
       ev.stats = { home: pick(hs), away: pick(as) };
+    } else if (ev.state !== "pre") {
+      // ESPN has no stats box for some leagues; LiveScore often does.
+      const ls = await liveScoreStats(ev).catch(() => null);
+      if (ls?.box.length) {
+        stats = ls.box;
+        ev.stats = ls.team;
+      }
     }
 
     const lineups = (d.rosters ?? []).map((r: any) => {

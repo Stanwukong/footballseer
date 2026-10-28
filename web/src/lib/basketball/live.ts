@@ -2,12 +2,14 @@ import "server-only";
 
 import type { LiveState } from "../types";
 import { cached, getJson } from "../live";
+import { getSportyLive, mergeSporty } from "../sportybet";
 import { getFixtures } from "./data";
 import type { LiveDetail, LiveEvent, LiveFeed } from "./types";
 
 /*
  * Live basketball: ESPN's public scoreboards for the North American leagues
- * and the NBL, and the EuroLeague's own feeds for EuroLeague and EuroCup.
+ * and the NBL, and the EuroLeague's own feeds for EuroLeague and EuroCup,
+ * with SportyBet's in-play market on top (lib/sportybet.ts).
  * Same caching as football (lib/live.ts): any number of polling browsers cost
  * one upstream fetch every 20 seconds.
  */
@@ -159,6 +161,7 @@ export function getLiveFeed(): Promise<LiveFeed> {
         }
       }
     }
+    const sporty = getSportyLive("basketball").catch(() => []);
     const pages = await Promise.allSettled(jobs);
     if (pages.length && pages.every((p) => p.status === "rejected")) throw new Error("live sources unreachable");
     const seen = new Set<string>();
@@ -174,7 +177,8 @@ export function getLiveFeed(): Promise<LiveFeed> {
     }
     const rank: Record<LiveState, number> = { in: 0, post: 1, pre: 2 };
     events.sort((a, b) => rank[a.state] - rank[b.state] || a.kickoff.localeCompare(b.kickoff));
-    return { updated: now.toISOString(), source: "ESPN · EuroLeague", events };
+    const elsewhere = mergeSporty(events, await sporty);
+    return { updated: now.toISOString(), source: "ESPN · EuroLeague · SportyBet", events, elsewhere };
   });
 }
 

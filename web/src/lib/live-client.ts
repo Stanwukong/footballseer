@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 import type { LiveDetail as BasketballDetail, LiveFeed as BasketballFeed } from "./basketball/types";
+import type { TennisFeed } from "./tennis/types";
 import type { LiveDetail, LiveFeed, LiveState } from "./types";
 
 /*
@@ -19,11 +20,12 @@ interface FeedState<F> {
   error: boolean;
 }
 
-interface AnyFeed {
-  events: { fixture: string | null; state: LiveState }[];
+interface FeedItem {
+  fixture?: string | null;
+  state: LiveState;
 }
 
-function createFeed<F extends AnyFeed>(url: string) {
+function createFeed<F, E extends FeedItem>(url: string, items: (f: F) => E[]) {
   let state: FeedState<F> = { feed: null, error: false };
   const listeners = new Set<() => void>();
   let timer: ReturnType<typeof setTimeout> | null = null;
@@ -75,22 +77,24 @@ function createFeed<F extends AnyFeed>(url: string) {
 
   const SERVER: FeedState<F> = { feed: null, error: false };
 
-  return function useFeed(): FeedState<F> & { byFixture: Map<string, F["events"][number]>; liveCount: number } {
+  return function useFeed(): FeedState<F> & { byFixture: Map<string, E>; liveCount: number } {
     const s = useSyncExternalStore(subscribe, () => state, () => SERVER);
     const byFixture = useMemo(() => {
-      const m = new Map<string, F["events"][number]>();
-      for (const e of s.feed?.events ?? []) if (e.fixture) m.set(e.fixture, e);
+      const m = new Map<string, E>();
+      for (const e of s.feed ? items(s.feed) : []) if (e.fixture) m.set(e.fixture, e);
       return m;
     }, [s.feed]);
-    const liveCount = useMemo(() => (s.feed?.events ?? []).filter((e) => e.state === "in").length, [s.feed]);
+    const liveCount = useMemo(() => (s.feed ? items(s.feed) : []).filter((e) => e.state === "in").length, [s.feed]);
     return { ...s, byFixture, liveCount };
   };
 }
 
-/** Football: ESPN soccer scoreboards. */
-export const useLiveFeed = createFeed<LiveFeed>("/api/live");
-/** Basketball: ESPN and EuroLeague scoreboards. */
-export const useBasketballFeed = createFeed<BasketballFeed>("/api/basketball/live");
+/** Football: ESPN soccer scoreboards, with SportyBet's market view. */
+export const useLiveFeed = createFeed("/api/live", (f: LiveFeed) => f.events);
+/** Basketball: ESPN and EuroLeague scoreboards, with SportyBet's market view. */
+export const useBasketballFeed = createFeed("/api/basketball/live", (f: BasketballFeed) => f.events);
+/** Tennis: SportyBet in play and upcoming, LiveScore results. */
+export const useTennisFeed = createFeed("/api/tennis/feed", (f: TennisFeed) => f.matches);
 
 function useDetail<D extends { event: { state: LiveState } }>(url: string | null, feedState: LiveState | undefined) {
   const active = feedState === "in" || feedState === "post";

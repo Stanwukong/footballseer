@@ -47,8 +47,8 @@ export function tourSteps(sport: Sport): TourStep[] {
       target: '[data-tour="sport"]',
       fallback: MENU,
       fallbackHint: "Open the menu to find it.",
-      title: "Football and basketball",
-      body: "Switch sport here. Every page exists for both.",
+      title: "Football, basketball and tennis",
+      body: "Switch sport here. Football and basketball have every page; tennis has live scores, Elo ratings and its track record.",
       advance: "ack",
     },
     {

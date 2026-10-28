@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
-import { LiveDot, StatBar } from "@/components/live";
+import { ElsewhereList, LiveDot, MarketLine, StatBar } from "@/components/live";
 import { Segmented } from "@/components/TeamTables";
 import { Card, CountryTag, cx, EmptyState, ProbPill, ResultMark } from "@/components/ui";
 import { liveSettle, marketName, topTip } from "@/lib/basketball/format";
@@ -253,6 +253,7 @@ export function LiveBoard({ fixtures, leagues }: { fixtures: Linked[]; leagues: 
           {shown.map((e) => <LiveCard key={e.id} e={e} f={e.fixture ? byId.get(e.fixture) : undefined} league={byCode[e.league]} />)}
         </div>
       )}
+      {view === "in" && <ElsewhereList items={feed.elsewhere} />}
     </div>
   );
 }
@@ -283,6 +284,7 @@ function LiveCard({ e, f, league }: { e: LiveEvent; f?: Linked; league?: LeagueI
           {e.periods[0].map((h, i) => `${h}-${e.periods[1][i] ?? "–"}`).join("  ")}
         </p>
       )}
+      {e.state === "in" && <MarketLine market={e.market} className="px-4 pt-1" />}
       {e.leaders.some(Boolean) && (
         <p className="truncate px-4 pt-1 text-xs text-ink-3">{e.leaders.filter(Boolean).map((l) => `${l![0]} ${l![1]}`).join(" · ")}</p>
       )}
