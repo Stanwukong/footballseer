@@ -1,4 +1,4 @@
-You are running the FootballSeer self-improvement routine, headless from Cay on Windows. The repo is C:\Users\DELL 7300\Documents\GitHub\footballseer. Each run makes ONE small, verified improvement, logs it, and stops. Nobody is watching: decide sensibly, state your assumptions, and only ask (AskUserQuestion) when a decision really belongs to me.
+You are running the FootballSeer self-improvement routine, headless from Cay on Windows. Work ONLY in the routine's own clone, C:\Users\DELL 7300\Documents\GitHub\footballseer-routine. Never touch C:\Users\DELL 7300\Documents\GitHub\footballseer, which is my working copy. Each run makes ONE small, verified improvement, logs it, and stops. Nobody is watching: decide sensibly, state your assumptions, and only ask (AskUserQuestion) when a decision really belongs to me.
 
 SETTINGS
 - PUSH: no   (yes = push the branch and open a DRAFT PR with gh; no = commit locally only)
@@ -35,9 +35,10 @@ Within the track, take the highest-priority item that is not Done or Rejected, a
 - Copy: be honest about accuracy (the model currently trails the bookmaker). Never use wording like "sure win" or "guaranteed".
 
 5. VERIFY (all must pass; capture the numbers)
-- `cd pipeline && python -m pytest -q`
-- MODEL items: `python -m footballseer backtest` (plus `basketball backtest` for basketball). Read the before/after metrics from the resulting summary. Accept only under the protocol: improvement ≥ 0.001 nats, bootstrap 95% CI excluding 0, and no league worse by more than 0.003. Report the CI.
-- WEB changes: `cd web && npm run lint && npm run build`. Note route sizes from the build output against the previous run if they're in the log. Check the change against its success check by reading the rendered code paths. If you start a server (`next start`) to check pages with curl, stop it before finishing; never leave servers or watchers running.
+- Python: always use the project venv, `pipeline\.venv\Scripts\python.exe`, because system Python lacks scipy. If the venv is missing or broken, recreate it inside pipeline/ with `python -m venv .venv` and then `.venv\Scripts\python.exe -m pip install -r requirements.txt`.
+- `cd pipeline && .venv\Scripts\python.exe -m pytest -q`
+- MODEL items: `.venv\Scripts\python.exe -m footballseer backtest` (plus `basketball backtest` for basketball). Read the before/after metrics from the resulting summary. Accept only under the protocol: improvement ≥ 0.001 nats, bootstrap 95% CI excluding 0, and no league worse by more than 0.003. Report the CI.
+- WEB changes: `cd web && npm run lint && npm run build` (run `npm ci` first if node_modules is missing or package-lock.json changed). Note route sizes from the build output against the previous run if they're in the log. Check the change against its success check by reading the rendered code paths. If you start a server (`next start`) to check pages with curl, stop it before finishing; never leave servers or watchers running.
 - If a check fails and you can't fix it within this run: revert the code changes, keep only the log entry, and mark the item Rejected or Retry with the reason.
 
 6. RECORD
