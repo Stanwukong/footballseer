@@ -9,6 +9,30 @@ import type { Summary } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Track record" };
 
+/** "95% CI −16.3% to −10.8%" for a bootstrap interval on a rate, or null when missing. */
+function ciPct(ci: [number, number] | null | undefined): string | null {
+  return ci ? `95% CI ${signedPct(ci[0])} to ${signedPct(ci[1])}` : null;
+}
+
+/** Plain-language verdict on the paired model-minus-market 1X2 log-loss gap (> 0: bookmaker better). */
+function MarketNote({ x }: { x: Summary["one_x_two"] }) {
+  if (x.logloss_gap == null) return null;
+  const ci = x.logloss_gap_ci;
+  const g = Math.abs(x.logloss_gap).toFixed(3);
+  const range = ci ? ` (95% CI ${ci[0].toFixed(3)} to ${ci[1].toFixed(3)})` : "";
+  const clear = ci != null && (ci[0] > 0 || ci[1] < 0);
+  const text = !clear
+    ? `The model and the bookmakers are statistically level on 1X2 log loss (gap ${x.logloss_gap.toFixed(3)} nats${range}).`
+    : x.logloss_gap > 0
+      ? `The bookmakers are currently more accurate than our model, by ${g} nats of log loss per match${range}. Treat our probabilities as a second opinion, not an edge.`
+      : `Our model is currently more accurate than the bookmakers, by ${g} nats of log loss per match${range}. Past results do not guarantee future ones.`;
+  return (
+    <p role="note" className="rounded-lg border border-line px-3 py-2 text-sm text-ink-2">
+      <span className="font-medium text-ink">Model vs bookmakers: </span>{text} Based on {(x.n_with_odds ?? x.n).toLocaleString()} matches with odds.
+    </p>
+  );
+}
+
 function Section({ s, title, blurb, names }: { s: Summary; title: string; blurb: string; names: Record<string, string> }) {
   const x = s.one_x_two;
   const beatMarket = x.market_logloss != null && x.model_logloss_same != null && x.model_logloss_same < x.market_logloss;
@@ -30,9 +54,11 @@ function Section({ s, title, blurb, names }: { s: Summary; title: string; blurb:
         <Stat
           label="Value bets, flat stake"
           value={<span className={s.value.roi != null && s.value.roi >= 0 ? "text-good" : "text-bad"}>{signedPct(s.value.roi)}</span>}
-          sub={`${s.value.bets.toLocaleString()} bets · ${s.value.profit >= 0 ? "+" : ""}${s.value.profit.toFixed(1)} units`}
+          sub={[`${s.value.bets.toLocaleString()} bets · ${s.value.profit >= 0 ? "+" : ""}${s.value.profit.toFixed(1)} units`, ciPct(s.value.roi_ci)].filter(Boolean).join(" · ")}
         />
       </div>
+
+      <MarketNote x={x} />
 
       <Card>
         <CardTitle hint="When the model says 70%, does it happen about 70% of the time? Points on the diagonal mean yes.">Calibration</CardTitle>
@@ -44,7 +70,7 @@ function Section({ s, title, blurb, names }: { s: Summary; title: string; blurb:
           <CardTitle hint={`Bets where model probability × average odds exceeded ${pct(1 + s.value.edge_threshold)} of stake`}>Value bets by market</CardTitle>
           <table className="w-full text-sm tabular">
             <thead className="text-left text-xs text-ink-3">
-              <tr><th className="py-1 font-normal">Market</th><th className="py-1 text-right font-normal">Bets</th><th className="py-1 text-right font-normal">Hit rate</th><th className="py-1 text-right font-normal">ROI</th></tr>
+              <tr><th className="py-1 font-normal">Market</th><th className="py-1 text-right font-normal">Bets</th><th className="py-1 text-right font-normal">Hit rate</th><th className="py-1 text-right font-normal">ROI <span className="text-ink-3">(95% CI)</span></th></tr>
             </thead>
             <tbody>
               {Object.entries(s.value.by_market).map(([k, v]) => (
@@ -52,7 +78,9 @@ function Section({ s, title, blurb, names }: { s: Summary; title: string; blurb:
                   <td className="py-1.5">{LABELS[k]}</td>
                   <td className="py-1.5 text-right">{v.bets.toLocaleString()}</td>
                   <td className="py-1.5 text-right">{pct(v.hit_rate, 1)}</td>
-                  <td className={`py-1.5 text-right font-medium ${v.roi != null && v.roi >= 0 ? "text-good" : "text-bad"}`}>{signedPct(v.roi)}</td>
+                  <td className={`py-1.5 text-right font-medium ${v.roi != null && v.roi >= 0 ? "text-good" : "text-bad"}`}>{signedPct(v.roi)}
+                    {v.roi_ci && <span className="block text-xs font-normal text-ink-3">{signedPct(v.roi_ci[0])} to {signedPct(v.roi_ci[1])}</span>}
+                  </td>
                 </tr>
               ))}
             </tbody>

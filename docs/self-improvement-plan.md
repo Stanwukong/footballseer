@@ -53,7 +53,7 @@ Written 5 Nov 2026 from a read of `pipeline/footballseer/` and the current `web/
 The web app (`web/`, Next.js 16 + React 19 + Tailwind 4) is a near-complete BetMines-style site for football and basketball (about 20 routes each); tennis has only 5. It has no frontend tests, and only 28 source files use `aria-` or `sr-only`. Each item below is one routine-sized change.
 
 ### Trust and honesty (most important, because the model trails the market)
-- **U1** Track record: show model-vs-market log-loss with a plain-language note ("the bookmaker is currently more accurate than us by X"). Show bootstrap CIs on ROI and CLV once they exist (P0-3/5).
+- **U1** *(Partial 2026-11-05: model-vs-market note with gap CI and ROI CIs shipped; CLV CI waits on P0-3)* Track record: show model-vs-market log-loss with a plain-language note ("the bookmaker is currently more accurate than us by X"). Show bootstrap CIs on ROI and CLV once they exist (P0-3/5).
 - **U2** Value page: label picks with confidence and sample size. Show historical ROI for that market and odds band next to each pick. Hide or grey out markets whose backtested ROI CI is below 0.
 - **U3** A data-freshness badge (last pipeline run, last odds update) in `Shell.tsx`, with a warning state when data is more than 24h old.
 - **U4** A "How it works" explainer per prediction (λ home/away, home advantage, key drivers) on `/match/[id]`.
