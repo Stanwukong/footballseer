@@ -22,7 +22,8 @@ Written 5 Nov 2026 from a read of `pipeline/footballseer/` and the current `web/
 2. **Remove the bookmaker margin correctly.** The code divides 1/odds by the total (basic normalisation). Shin's method or the power method corrects favourite–longshot bias better (Štrumbelj 2014; Clarke et al. 2017). This also affects the benchmark log-loss.
 3. **Benchmark against Pinnacle closing odds.** football-data.co.uk provides `PSH/PSD/PSA` and closing `PSCH/PSCD/PSCA`. Use Pinnacle closing as the "truth" benchmark. Track **closing-line value (CLV)** for every flagged bet, because CLV gives a reliable signal long before ROI does.
 4. **Staking.** Use fractional Kelly (¼) with a minimum edge that depends on the odds. Look into raising `VALUE_EDGE` and capping longshots, since the losses are largest on 1 and 2.
-5. **Statistical honesty.** Report bootstrap confidence intervals on the log-loss difference and on ROI. Never accept a change that wins by less than its standard error.
+5. **Statistical honesty.** Report bootstrap confidence intervals on the log-loss difference and on ROI. Never accept a change that wins by less than its standard error. **Status: Done (2026-11-05)**: `summarize()` exports `logloss_gap`/`logloss_gap_ci` and `roi_ci` (overall and per market). Paired per-match CIs for *before vs after* experiments (A/B on the same matches) remain a follow-up, P0-5b.
+- **P0-5b** Paired A/B backtest helper: run baseline and candidate on identical matches and report a bootstrap CI on the per-match log-loss difference, plus per-league deltas (needed to apply the acceptance rule).
 
 ### P1: better football ratings
 6. **Tune `xi` and `reg` per league** with walk-forward log-loss/RPS (a grid of xi in {0.001…0.004} and reg in {1…10}). Dixon and Coles (1997) chose ξ by optimising predictive likelihood, not by fixing it.

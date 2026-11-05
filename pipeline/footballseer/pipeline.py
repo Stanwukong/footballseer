@@ -146,6 +146,27 @@ def _logloss_1x2(p: np.ndarray, outcome: np.ndarray) -> float:
     return float(-np.log(np.clip(p[np.arange(len(p)), outcome], 1e-9, 1)).mean())
 
 
+def bootstrap_ci(x: np.ndarray, n_boot: int = 2000, level: float = 0.95, seed: int = 0) -> list[float] | None:
+    """Percentile bootstrap CI for the mean of per-item values `x`.
+
+    Resamples items with replacement `n_boot` times and takes the (1-level)/2 and
+    (1+level)/2 quantiles of the resampled means. Used on paired per-match
+    differences (model minus market log-loss) and on per-bet profits, so a change is
+    only called real when the interval excludes 0. Fixed seed keeps exports stable.
+    """
+    x = np.asarray(x, dtype=float)
+    x = x[np.isfinite(x)]
+    if len(x) < 2:
+        return None
+    rng = np.random.default_rng(seed)
+    means = np.empty(n_boot)
+    for i in range(0, n_boot, 200):  # chunks keep memory at 200 x n
+        k = min(200, n_boot - i)
+        means[i:i + k] = x[rng.integers(0, len(x), size=(k, len(x)))].mean(1)
+    a = (1 - level) / 2
+    return [round(float(np.quantile(means, a)), 4), round(float(np.quantile(means, 1 - a)), 4)]
+
+
 def _rps(p: np.ndarray, outcome: np.ndarray) -> float:
     """Ranked probability score for ordered H/D/A outcomes (lower is better)."""
     o = np.zeros_like(p)
@@ -190,21 +211,28 @@ def summarize(df: pd.DataFrame) -> dict | None:
                 "market_logloss": round(_logloss_1x2(imp, o), 4),
                 "market_rps": round(_rps(imp, o), 4),
                 "market_accuracy": round(float((imp.argmax(1) == o).mean()), 4)}
+        # Paired per-match gap (model minus market), > 0 means the market is better.
+        idx = np.arange(len(o))
+        gap = (-np.log(np.clip(pmo[idx, o], 1e-9, 1))) - (-np.log(np.clip(imp[idx, o], 1e-9, 1)))
+        cmp |= {"logloss_gap": round(float(gap.mean()), 4), "logloss_gap_ci": bootstrap_ci(gap)}
     out["one_x_two"] = cmp
 
     # Flat-stake value betting at the recorded (pre-match average) odds.
-    vb = {}
+    vb, profits = {}, []
     for m, col in ODDS_MARKETS.items():
         odds = df[col].to_numpy()
         pick = np.isfinite(odds) & (odds > 1) & (odds <= VALUE_MAX_ODDS) & (df[m].to_numpy() * odds - 1 > VALUE_EDGE)
         w = won[m][pick]
         profit = np.where(w == 1, odds[pick] - 1, -1.0)
         vb[m] = {"bets": int(pick.sum()), "hit_rate": round(float(w.mean()), 4) if pick.any() else None,
-                 "profit": round(float(profit.sum()), 2), "roi": round(float(profit.mean()), 4) if pick.any() else None}
+                 "profit": round(float(profit.sum()), 2), "roi": round(float(profit.mean()), 4) if pick.any() else None,
+                 "roi_ci": bootstrap_ci(profit)}
+        profits.append(profit)
     tot_bets = sum(v["bets"] for v in vb.values())
     tot_profit = sum(v["profit"] for v in vb.values())
     out["value"] = {"edge_threshold": VALUE_EDGE, "by_market": vb, "bets": tot_bets,
-                    "profit": round(tot_profit, 2), "roi": round(tot_profit / tot_bets, 4) if tot_bets else None}
+                    "profit": round(tot_profit, 2), "roi": round(tot_profit / tot_bets, 4) if tot_bets else None,
+                    "roi_ci": bootstrap_ci(np.concatenate(profits)) if profits else None}
 
     # Per-league 1X2 quality, so users can see where the model is weakest.
     leagues = []

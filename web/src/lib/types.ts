@@ -177,13 +177,21 @@ export interface Summary {
     market_logloss?: number;
     market_rps?: number;
     market_accuracy?: number;
+    /** Mean per-match log-loss of model minus market (> 0: market better). */
+    logloss_gap?: number;
+    /** Bootstrap 95% CI [low, high] for logloss_gap. */
+    logloss_gap_ci?: [number, number] | null;
   };
   value: {
     edge_threshold: number;
     bets: number;
     profit: number;
     roi: number | null;
-    by_market: Record<string, { bets: number; hit_rate: number | null; profit: number; roi: number | null }>;
+    /** Bootstrap 95% CI [low, high] for flat-stake ROI. */
+    roi_ci?: [number, number] | null;
+    by_market: Record<string, {
+      bets: number; hit_rate: number | null; profit: number; roi: number | null; roi_ci?: [number, number] | null;
+    }>;
   };
   leagues: {
     league: string;

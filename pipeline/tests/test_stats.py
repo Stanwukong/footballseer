@@ -68,3 +68,18 @@ def test_league_profile_rates():
     assert "corners" not in p  # under 20 matches with corner data
     big = stats.league_profile(pd.concat([history()] * 2, ignore_index=True))
     assert big["corners"] == pytest.approx(28 / 3, abs=0.01) and big["h1_share"] == pytest.approx(2 / 5, abs=1e-3)
+
+
+def test_bootstrap_ci_covers_mean_and_excludes_zero_when_clear():
+    import numpy as np
+    from footballseer.pipeline import bootstrap_ci
+
+    rng = np.random.default_rng(1)
+    x = rng.normal(0.02, 0.1, 5000)
+    lo, hi = bootstrap_ci(x)
+    assert lo < x.mean() < hi
+    assert lo > 0  # clearly positive mean -> CI excludes 0
+    lo0, hi0 = bootstrap_ci(rng.normal(0.0, 0.1, 500))
+    assert lo0 < 0 < hi0
+    assert bootstrap_ci(np.array([1.0])) is None
+    assert bootstrap_ci(x) == [lo, hi]  # deterministic
