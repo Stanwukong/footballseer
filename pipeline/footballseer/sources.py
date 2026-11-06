@@ -61,18 +61,52 @@ class NotFound(Exception):
     pass
 
 
-def _get(url: str, timeout: int = 30) -> bytes | None:
-    """Body on 200; None on network errors/throttling; raises NotFound on 404."""
-    try:
-        r = requests.get(url, headers=UA, timeout=timeout)
-        if r.status_code == 200 and r.content:
-            return r.content
-        log.debug("GET %s -> %s", url, r.status_code)
-        if r.status_code == 404:
-            raise NotFound(url)
-    except requests.RequestException as e:
-        log.debug("GET %s failed: %s", url, e)
+RETRIES = 3          # attempts per URL
+BACKOFF = 1.5        # seconds; attempt k waits BACKOFF * 2**(k-1) before retrying
+_RETRY_STATUS = {429, 500, 502, 503, 504}
+
+
+def _get(url: str, timeout: int = 30, retries: int = RETRIES) -> bytes | None:
+    """Body on 200; None on network errors/throttling; raises NotFound on 404.
+
+    Transient failures (connection errors, timeouts, 429 and 5xx) are retried
+    with exponential backoff, BACKOFF * 2**(k-1) seconds after attempt k, so a
+    momentary blip does not drop a whole league for the run. Other statuses
+    (and 404) are final and are not retried.
+    """
+    for attempt in range(1, retries + 1):
+        try:
+            r = requests.get(url, headers=UA, timeout=timeout)
+            if r.status_code == 200 and r.content:
+                return r.content
+            log.debug("GET %s -> %s (attempt %d/%d)", url, r.status_code, attempt, retries)
+            if r.status_code == 404:
+                raise NotFound(url)
+            if r.status_code not in _RETRY_STATUS:
+                return None
+        except requests.RequestException as e:
+            log.debug("GET %s failed: %s (attempt %d/%d)", url, e, attempt, retries)
+        if attempt < retries:
+            time.sleep(BACKOFF * 2 ** (attempt - 1))
+    log.warning("GET %s gave up after %d attempts", url, retries)
     return None
+
+
+def fixture_alerts(fixtures: pd.DataFrame, leagues: list[str]) -> list[dict]:
+    """One warning per league that has a fitted model but 0 upcoming fixtures.
+
+    This can be legitimate (off-season, international break), but it is also
+    what a silently broken source looks like, so it is logged and exported in
+    track_record.json["alerts"] rather than passing unnoticed.
+    """
+    counts = fixtures["league"].value_counts() if len(fixtures) else pd.Series(dtype=int)
+    alerts = []
+    for code in sorted(leagues):
+        if int(counts.get(code, 0)) == 0:
+            log.warning("%s: 0 upcoming fixtures from every source", code)
+            alerts.append({"level": "warning", "kind": "no_fixtures", "league": code,
+                           "message": f"{code}: no upcoming fixtures found (off-season, or a source is down)"})
+    return alerts
 
 
 def _wayback(url: str) -> bytes | None:

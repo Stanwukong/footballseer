@@ -70,9 +70,10 @@ The web app (`web/`, Next.js 16 + React 19 + Tailwind 4) is a near-complete BetM
 - **U11** Accessibility sweep: semantic tables, `aria-label` on icon-only buttons, visible focus rings, WCAG AA colour contrast (red/green won/lost must not rely on colour alone), and keyboard-usable date strip and tabs.
 - **U12** Payload size: split the large per-day JSON, lazy-load match details, and check the bundle size from `next build`.
 - **U13** SEO: `generateMetadata` per match, league and team page, plus Open Graph images and a sitemap.
+- **U14** Show `track_record.json["alerts"]` (pipeline health warnings, e.g. a league with 0 fixtures) on the track-record page, in text and not only by colour.
 
 ### Reliability and code health
-- **R1** Pipeline resilience: retries and backoff on sources, clear logs when a league silently returns 0 fixtures, and an alert row in the track-record JSON.
+- **R1** (Done 2026-11-06) Pipeline resilience: retries and backoff on sources, clear logs when a league silently returns 0 fixtures, and an alert row in the track-record JSON.
 - **R2** Schema contract: one typed definition of the JSON the pipeline exports, checked on both sides (pydantic or JSON Schema in Python, the matching TS type in `web/src/lib`).
 - **R3** Tests: pipeline tests for the markets maths and settlement edge cases; `npm run lint` and `npm run build` in CI; a smoke test that renders the main routes.
 - **R4** Cleanup: remove duplicated football and basketball component logic where a shared component fits; prune unused routes.
