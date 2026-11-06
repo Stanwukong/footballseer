@@ -207,6 +207,15 @@ export interface Summary {
 export interface TrackRecord {
   live: Summary | null;
   backtest: Summary | null;
+  /** Pipeline health warnings from the latest run (e.g. a league with 0 fixtures). */
+  alerts?: PipelineAlert[];
+}
+
+export interface PipelineAlert {
+  level: "warning" | "error";
+  kind: string;
+  league?: string;
+  message: string;
 }
 
 // --------------------------------------------------------------------------- //

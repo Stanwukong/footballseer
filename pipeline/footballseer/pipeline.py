@@ -370,6 +370,7 @@ def run(today: date | None = None) -> None:
         known[code] = current_teams(df, today)
 
     fixtures = sources.load_fixtures(today, known)
+    alerts = sources.fixture_alerts(fixtures, list(known))
     log.info("%d upcoming fixtures across %d leagues", len(fixtures), fixtures["league"].nunique() if len(fixtures) else 0)
     preds = []
     for code, g in fixtures.groupby("league"):
@@ -430,7 +431,8 @@ def run(today: date | None = None) -> None:
     _write("leagues.json", leagues_out)
 
     track = {"live": summarize(ledger) if not ledger.empty else None,
-             "backtest": summarize(_read(BACKTEST)) if BACKTEST.exists() else None}
+             "backtest": summarize(_read(BACKTEST)) if BACKTEST.exists() else None,
+             "alerts": alerts}
     _write("track_record.json", track)
     _write("meta.json", {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
