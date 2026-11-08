@@ -15,6 +15,10 @@ def main() -> None:
     b = sub.add_parser("backtest", help="walk-forward backtest for the track record")
     b.add_argument("--start", default="2025-08-01")
     b.add_argument("--refit-days", type=int, default=7)
+    b.add_argument("--out", help="write the backtest CSV here instead of data/backtest.csv")
+    cp = sub.add_parser("compare", help="paired A/B 1X2 log-loss comparison of two backtest CSVs")
+    cp.add_argument("base")
+    cp.add_argument("cand")
     bb = sub.add_parser("basketball", help="the same jobs for basketball")
     bb.add_argument("job", choices=["run", "backtest"])
     bb.add_argument("--date", type=date.fromisoformat, help="pretend today is this date")
@@ -31,7 +35,12 @@ def main() -> None:
     if args.cmd == "run":
         pipeline.run(args.date)
     elif args.cmd == "backtest":
-        pipeline.backtest(args.start, refit_days=args.refit_days)
+        pipeline.backtest(args.start, refit_days=args.refit_days, out=args.out)
+    elif args.cmd == "compare":
+        import json
+        import pandas as pd
+        res = pipeline.compare_backtests(pd.read_csv(args.base), pd.read_csv(args.cand))
+        print(json.dumps(res, indent=1))
     elif args.cmd == "tennis":
         tennis.run(args.date)
     elif args.job == "run":

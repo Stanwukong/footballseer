@@ -20,3 +20,11 @@
 **Decision.** Accepted. The bookmaker is significantly better than the model, and value betting loses money significantly in every market except O2.5.
 
 **Next.** The acceptance rule compares *before vs after* on the same matches. That needs a paired A/B helper that runs two backtests and gives a CI on the per-match difference (P0-5b). Then P0-2 (Shin) and P0-1 (model+market blend), the biggest expected gain.
+
+## 2026-11-08 · P0-5b paired A/B backtest comparison (measurement only)
+
+- **Hypothesis:** a paired comparison on identical matches gives a usable Δlog-loss CI so the protocol (Δ ≤ −0.001, CI excluding 0, no league worse by > 0.003) can actually be applied. Self-comparison must give Δ=0, and a known-worse candidate must be rejected.
+- **Change:** `pipeline.compare_backtests(base, cand)` inner-joins two backtests on `id` (settled matches with full 1X2 odds only), computes per-match d = LL_cand − LL_base, and reports the mean, a percentile bootstrap 95% CI (2,000 resamples, seed 0), per-league deltas, the worst league, and `accepted`. CLI: `python -m footballseer backtest --out cand.csv` writes a candidate without touching data/backtest.csv; `python -m footballseer compare data/backtest.csv cand.csv` prints the JSON.
+- **Metrics:** the predictions are unchanged. On data/backtest.csv vs itself: n=14,187 (matches the P0-5 gap n), Δ=0.0000. Sanity candidate (each 1X2 probability shrunk 10% towards 1/3): base 1.0263 → 1.0273, Δ=+0.0010, CI [+0.0003, +0.0016], worst league P1 +0.0087 → rejected. A 0.001-nat change is resolvable here: the paired CI half-width is ~0.0007.
+- **Decision:** accepted (infrastructure).
+- **Next:** P0-2 (Shin or power de-margining). It changes the benchmark rather than the model, so report the market log-loss under each method. Then P0-1 (model+market blend), judged with `compare`.
