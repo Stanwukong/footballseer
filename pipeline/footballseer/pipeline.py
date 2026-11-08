@@ -167,6 +167,48 @@ def bootstrap_ci(x: np.ndarray, n_boot: int = 2000, level: float = 0.95, seed: i
     return [round(float(np.quantile(means, a)), 4), round(float(np.quantile(means, 1 - a)), 4)]
 
 
+def _match_logloss_1x2(df: pd.DataFrame) -> pd.Series:
+    """Per-match 1X2 log-loss -log p(observed outcome), indexed by match id."""
+    o = np.where(df["hg"] > df["ag"], 0, np.where(df["hg"] == df["ag"], 1, 2))
+    p = df[["1", "X", "2"]].to_numpy(float)
+    return pd.Series(-np.log(np.clip(p[np.arange(len(p)), o], 1e-9, 1)), index=df["id"].to_numpy())
+
+
+def compare_backtests(base: pd.DataFrame, cand: pd.DataFrame, min_gain: float = 0.001,
+                      max_league_loss: float = 0.003) -> dict | None:
+    """Paired A/B comparison of two walk-forward backtests (P0-5b).
+
+    Both frames are restricted to the *same* settled matches with full 1X2 odds
+    (inner join on `id`), so match-to-match noise cancels: with d_i = LL_cand,i -
+    LL_base,i, the mean of d estimates the change in log-loss and its percentile
+    bootstrap CI (resampling matches) is far tighter than comparing two unpaired
+    means. Negative delta means the candidate is better.
+
+    Acceptance (evaluation protocol): delta <= -min_gain, the CI's upper bound < 0,
+    and no league's mean delta worse than +max_league_loss.
+    """
+    def ready(df: pd.DataFrame) -> pd.DataFrame:
+        df = df.dropna(subset=["hg", "ag", "odds_h", "odds_d", "odds_a", "1", "X", "2"])
+        return df.drop_duplicates("id").set_index("id", drop=False)
+
+    b, c = ready(base), ready(cand)
+    ids = b.index.intersection(c.index)
+    if len(ids) < 2:
+        return None
+    b, c = b.loc[ids], c.loc[ids]
+    d = _match_logloss_1x2(c).to_numpy() - _match_logloss_1x2(b).to_numpy()
+    leagues = []
+    for code, idx in pd.Series(np.arange(len(ids))).groupby(b["league"].to_numpy()):
+        dl = d[idx.to_numpy()]
+        leagues.append({"league": code, "n": int(len(dl)), "delta": round(float(dl.mean()), 4)})
+    delta, ci = float(d.mean()), bootstrap_ci(d)
+    worst = max(leagues, key=lambda r: r["delta"])
+    accepted = bool(delta <= -min_gain and ci is not None and ci[1] < 0 and worst["delta"] <= max_league_loss)
+    return {"n": int(len(ids)), "base_logloss": round(float(_match_logloss_1x2(b).mean()), 4),
+            "cand_logloss": round(float(_match_logloss_1x2(c).mean()), 4), "delta": round(delta, 4),
+            "delta_ci": ci, "worst_league": worst, "leagues": leagues, "accepted": accepted}
+
+
 def _rps(p: np.ndarray, outcome: np.ndarray) -> float:
     """Ranked probability score for ordered H/D/A outcomes (lower is better)."""
     o = np.zeros_like(p)
@@ -443,8 +485,12 @@ def run(today: date | None = None) -> None:
     })
 
 
-def backtest(start: str, today: date | None = None, refit_days: int = 7) -> None:
-    """Walk-forward: refit every `refit_days` using only matches before the cutoff."""
+def backtest(start: str, today: date | None = None, refit_days: int = 7, out: Path | None = None) -> None:
+    """Walk-forward: refit every `refit_days` using only matches before the cutoff.
+
+    `out` writes a candidate backtest elsewhere (for `compare`) instead of data/backtest.csv.
+    """
+    out = Path(out) if out else BACKTEST
     today = today or sources.today_utc()
     results = _load_all(today, seasons=4)
     rows = []
@@ -466,8 +512,8 @@ def backtest(start: str, today: date | None = None, refit_days: int = 7) -> None
             n += len(p)
         log.info("%-4s backtested %d matches", code, n)
     bt = pd.concat(rows, ignore_index=True)
-    BACKTEST.parent.mkdir(parents=True, exist_ok=True)
-    bt.to_csv(BACKTEST, index=False, float_format="%.4f")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    bt.to_csv(out, index=False, float_format="%.4f")
     s = summarize(bt)
     log.info("backtest: %d matches; 1X2 %s; value %s", s["matches"], s["one_x_two"],
              {k: s["value"][k] for k in ("bets", "profit", "roi")})
