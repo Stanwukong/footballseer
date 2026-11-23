@@ -28,3 +28,11 @@
 - **Metrics:** the predictions are unchanged. On data/backtest.csv vs itself: n=14,187 (matches the P0-5 gap n), Δ=0.0000. Sanity candidate (each 1X2 probability shrunk 10% towards 1/3): base 1.0263 → 1.0273, Δ=+0.0010, CI [+0.0003, +0.0016], worst league P1 +0.0087 → rejected. A 0.001-nat change is resolvable here: the paired CI half-width is ~0.0007.
 - **Decision:** accepted (infrastructure).
 - **Next:** P0-2 (Shin or power de-margining). It changes the benchmark rather than the model, so report the market log-loss under each method. Then P0-1 (model+market blend), judged with `compare`.
+
+## 2026-11-09 · 19a basketball back-to-back terms (rejected)
+- **Hypothesis:** adding two league-wide ridge terms (points scored / allowed by a side that played the day before) to the basketball points model lowers walk-forward moneyline log-loss by ≥ 0.001 nats.
+- **Change:** `model.back_to_back()` flags from the schedule; two extra columns in the weighted ridge regression (ridge-shrunk to 0); `expected()` takes the flags. Reverted.
+- **Metric:** `basketball backtest` (start 2025-05-01, weekly refits), paired on the same 10,017 games; ESPN has no historical odds, so this is model log-loss, not vs-market.
+- **Result:** 0.5589 → 0.5590, Δ = +0.0001, bootstrap 95% CI [−0.0007, +0.0010]. Per league: GLG −0.0016, NCAAM +0.0004, WNBA +0.0003, NBA/EL/ECUP/NBL ≈ 0.
+- **Decision:** rejected. The fatigue effect is small next to team-strength noise, and most games (NCAAM, Euro leagues) rarely have back-to-backs.
+- **Next:** pace × efficiency split (rest of item 19), or a per-league b2b term limited to NBA/WNBA with a larger sample.

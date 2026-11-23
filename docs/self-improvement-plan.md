@@ -45,7 +45,7 @@ Written 5 Nov 2026 from a read of `pipeline/footballseer/` and the current `web/
 18. **Cards.** The data has `HY/AY/HR/AR`. A referee-plus-team cards model is a cheap new market.
 
 ### Basketball and tennis
-19. **Basketball.** Add rest and back-to-back effects, travel, and an adjustment for injured or rested stars. Fit the margin standard deviation per matchup. Combine with the market as in (1). Model team pace and efficiency separately (possessions × points per possession) instead of folding them into off/def.
+19. **Basketball.** *(19a back-to-back term Rejected 2026-11-09: Δlogloss=+0.0001, CI [-0.0007,+0.0010])* Add rest and back-to-back effects, travel, and an adjustment for injured or rested stars. Fit the margin standard deviation per matchup. Combine with the market as in (1). Model team pace and efficiency separately (possessions × points per possession) instead of folding them into off/def.
 20. **Tennis.** Use surface-specific Elo blended with overall Elo (Kovalchik 2016 compared Elo variants; the surface blend is the standard improvement). Add a serve/return point-win model (Barnett & Clarke 2005) for set and game markets, and a fatigue term (sets played in the last N days).
 
 ## 2b. Product, UI/UX and reliability backlog
